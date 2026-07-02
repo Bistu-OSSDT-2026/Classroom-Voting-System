@@ -1,0 +1,24 @@
+# 操作系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / 编辑器
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 依赖与构建产物
+node_modules/
+dist/
+build/
+*.log
+
+# 环境变量与密钥(切勿提交)
+.env
+.env.*
+!.env.example
+
+# 本地部署脚本的临时输出
+deploy.log
