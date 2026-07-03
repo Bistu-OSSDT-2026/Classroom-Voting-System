@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>课堂投票系统 - CVS</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>📊 Classroom Vote System</h1>
+        <p class="subtitle">课堂实时投票系统</p>
+      </header>
+
+      <main>
+        <!-- 投票题目区域 -->
+        <section id="question-area">
+          <h2 id="question-title">加载中...</h2>
+          <div id="options-container"></div>
+        </section>
+
+        <!-- 结果展示区域 -->
+        <section id="result-area" class="hidden">
+          <h2>📈 投票结果</h2>
+          <div id="result-chart"></div>
+          <p id="total-votes" class="total-info"></p>
+        </section>
+
+        <!-- 操作按钮 -->
+        <div id="action-bar">
+          <button id="btn-vote" class="btn btn-primary" disabled>提交投票</button>
+          <button id="btn-reset" class="btn btn-secondary">重置投票</button>
+        </div>
+
+        <!-- 提示信息 -->
+        <p id="message" class="message"></p>
+      </main>
+
+      <footer>
+        <p>CVS - Classroom Vote System &copy; 2026</p>
+      </footer>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

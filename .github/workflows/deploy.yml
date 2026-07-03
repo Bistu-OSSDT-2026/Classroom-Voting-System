@@ -1,0 +1,64 @@
+# GitHub Actions 自动部署工作流
+# 触发条件: push 到 main 分支后自动构建并部署到 GitHub Pages
+# 功能: 构建项目 → 发布到 gh-pages 分支
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 设置 GITHUB_TOKEN 的权限，让部署工作流能推送到 gh-pages
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# 确保同时只有一个部署在运行
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    name: 构建并部署
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 检出代码
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+
+      # 2. 配置 Node.js 环境
+      - name: 🟢 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # 3. 安装依赖
+      - name: 📦 安装依赖
+        run: npm install
+
+      # 4. 运行 lint 检查
+      - name: 🔍 Lint 检查
+        run: npm run lint
+
+      # 5. 运行测试
+      - name: 🧪 运行测试
+        run: npm test
+
+      # 6. 构建项目
+      - name: 🏗️ 构建项目
+        run: npm run build
+
+      # 7. 部署到 GitHub Pages
+      - name: 🚀 部署到 GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
+          commit_message: "deploy: ${{ github.sha }} [skip ci]"
+          user_name: "github-actions[bot]"
+          user_email: "github-actions[bot]@users.noreply.github.com"
