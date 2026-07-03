@@ -23,7 +23,7 @@ const DEFAULT_QUESTION = {
 const STORAGE_KEY = "cvs_question";
 
 // ===== 状态管理 =====
-let state = {
+const state = {
   question: null,
   selectedOptionId: null,
   hasVoted: false,

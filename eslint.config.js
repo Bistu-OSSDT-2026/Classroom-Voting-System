@@ -12,6 +12,7 @@ export default [
         console: "readonly",
         localStorage: "readonly",
         setTimeout: "readonly",
+        structuredClone: "readonly",
       },
     },
     rules: {
