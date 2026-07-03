@@ -1,57 +1,54 @@
 @echo off
-chcp 65001 >nul
-title 课堂投票系统 CVS
 cd /d "%~dp0"
+title CVS - Classroom Vote System
 
-:: 检查 Java
+echo ============================================
+echo   Classroom Vote System - Starting...
+echo ============================================
+echo.
+
+:: Step 1: Check Java
+echo [1/3] Checking Java...
 java -version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [错误] 未找到 Java，请先安装 JDK 21
-    echo 下载地址: https://adoptium.net/download/
+    echo [ERROR] Java not found! Please install JDK 21
+    echo Download: https://adoptium.net/download/
+    echo.
     pause
-    exit /b 1
+    exit /b
 )
+echo        Java OK.
+echo.
 
-:: 如果 JAR 不存在，自动构建（使用 Maven Wrapper，无需安装 Maven）
+:: Step 2: Build if needed
 if not exist "target\cvs-app.jar" (
-    echo [1/2] 首次运行，正在构建项目（需要下载依赖，约 1-2 分钟）...
+    echo [2/3] First run - building project (download dependencies, 1-2 min)...
     call mvnw.cmd clean package -DskipTests -q
     if %errorlevel% neq 0 (
-        echo [错误] 构建失败，请检查网络连接
+        echo [ERROR] Build failed! Check your internet connection.
+        echo.
         pause
-        exit /b 1
+        exit /b
     )
-    echo [1/2] 构建完成！
+    echo        Build complete!
+) else (
+    echo [2/3] Using existing build.
 )
-
-:: 防火墙提示
-netsh advfirewall firewall show rule name="CVS-Port8080" >nul 2>&1
-if %errorlevel% neq 0 (
-    echo.
-    echo ╔══════════════════════════════════════════════╗
-    echo ║  如需局域网访问，请以管理员身份运行:         ║
-    echo ║  netsh advfirewall firewall add rule         ║
-    echo ║  name="CVS-Port8080" dir=in action=allow     ║
-    echo ║  protocol=TCP localport=8080                  ║
-    echo ╚══════════════════════════════════════════════╝
-    echo.
-)
-
-:: 启动
-echo [2/2] 启动服务中...
-echo.
-echo ╔══════════════════════════════════════════════╗
-echo ║  课堂投票系统已启动！                        ║
-echo ║  本地访问: http://localhost:8080              ║
-echo ║  教师账号: teacher1 / 123456                  ║
-echo ║  学生账号: student1 / 123456                 ║
-echo ╚══════════════════════════════════════════════╝
 echo.
 
-echo 按 Ctrl+C 停止服务
+:: Step 3: Start server
+echo [3/3] Starting server at http://localhost:8080
 echo.
+echo   Default accounts:
+echo     Teacher: teacher1 / 123456
+echo     Student: student1 / 123456
+echo.
+echo   Press Ctrl+C to stop
+echo ============================================
+echo.
+
 java -jar target\cvs-app.jar
 
 echo.
-echo 服务已停止。
+echo Server stopped.
 pause
