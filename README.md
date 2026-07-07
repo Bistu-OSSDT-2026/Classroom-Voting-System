@@ -440,6 +440,7 @@ A: 重启服务即可（H2 内存数据库自动重置为 `data.sql`）。
 | 角色 | 成员 |
 |------|------|
 | 项目负责人 | [@lclll-7427](https://github.com/lclll-7427) |
+| 核心开发者 | [@Jerryx6218](https://github.com/Jerryx6218) |
 | 贡献者 | [查看贡献者列表](https://github.com/lclll-7427/team-project/graphs/contributors) |
 
 ---
