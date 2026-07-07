@@ -2,14 +2,18 @@
 setlocal enabledelayedexpansion
 
 :: === Auto-detect JDK 21+ ===
+:: First check if current JAVA_HOME points to JDK 21+
 if defined JAVA_HOME (
-    if exist "%JAVA_HOME%\bin\javac.exe" goto :build
+    if exist "%JAVA_HOME%\bin\javac.exe" (
+        "%JAVA_HOME%\bin\javac" -version 2>&1 | findstr "21\." >nul
+        if !errorlevel! equ 0 goto :build
+    )
 )
 
-:: Search common JDK locations
-set "JDK_FOUND="
+:: Search common JDK 21+ locations
 for %%d in (
     "C:\Program Files\Java\jdk-21*"
+    "C:\Program Files\Java\jdk-17*"
     "C:\Program Files (x86)\Java\jdk-21*"
     "D:\cursor\jdk21"
     "D:\jdk\jdk-21*"
@@ -18,33 +22,25 @@ for %%d in (
     for /d %%j in (%%d) do (
         if exist "%%j\bin\javac.exe" (
             set "JAVA_HOME=%%j"
-            set "JDK_FOUND=1"
-            goto :found
+            echo  Auto-detected JDK: %%j
+            goto :build
         )
     )
 )
 
-:: Fallback: use java on PATH
-for /f "tokens=*" %%i in ('where javac 2^>nul') do (
-    set "JDK_FOUND=1"
-    goto :build
-)
-
 echo  [ERROR] JDK 21+ not found!
+echo  Current JAVA_HOME: %JAVA_HOME%
 echo  Please install JDK 21 from: https://adoptium.net/download/
-echo  Or set JAVA_HOME manually to your JDK 21 installation path.
 pause
 exit /b 1
-
-:found
-echo  Auto-detected JDK: %JAVA_HOME%
 
 :build
 set "PATH=%JAVA_HOME%\bin;%PATH%"
 
 echo.
 echo  ============================================
-echo    Building CVS... (first time takes 1-2 min to download)
+echo    Building CVS... (first time 1-2 min)
+echo    JAVA_HOME: %JAVA_HOME%
 echo  ============================================
 echo.
 

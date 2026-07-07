@@ -1,15 +1,19 @@
 @echo off
 setlocal enabledelayedexpansion
+title CVS Server
 
 :: === Auto-detect JDK 21+ ===
 if defined JAVA_HOME (
-    if exist "%JAVA_HOME%\bin\java.exe" goto :run
+    if exist "%JAVA_HOME%\bin\java.exe" (
+        "%JAVA_HOME%\bin\java" -version 2>&1 | findstr "21\." >nul
+        if !errorlevel! equ 0 goto :run
+    )
 )
 
-:: Search common JDK locations
-set "JDK_FOUND="
+:: Search common JDK 21+ locations
 for %%d in (
     "C:\Program Files\Java\jdk-21*"
+    "C:\Program Files\Java\jdk-17*"
     "C:\Program Files (x86)\Java\jdk-21*"
     "D:\cursor\jdk21"
     "D:\jdk\jdk-21*"
@@ -18,42 +22,30 @@ for %%d in (
     for /d %%j in (%%d) do (
         if exist "%%j\bin\java.exe" (
             set "JAVA_HOME=%%j"
-            set "JDK_FOUND=1"
-            goto :found
+            echo  Auto-detected JDK: %%j
+            goto :run
         )
     )
 )
 
-:: Fallback: use java on PATH
-for /f "tokens=*" %%i in ('where java 2^>nul') do (
-    java -version 2>&1 | findstr "21\." >nul
-    if !errorlevel! equ 0 (
-        set "JDK_FOUND=1"
-        goto :run
-    )
-)
-
 echo  [ERROR] JDK 21+ not found!
+echo  Current JAVA_HOME: %JAVA_HOME%
 echo  Please install JDK 21 from: https://adoptium.net/download/
-echo  Or set JAVA_HOME manually to your JDK 21 installation path.
 pause
 exit /b 1
 
-:found
-echo  Auto-detected JDK: %JAVA_HOME%
-
 :run
 set "PATH=%JAVA_HOME%\bin;%PATH%"
-title CVS Server
 
 echo.
 echo  ============================================
 echo    CVS - Classroom Vote System
+echo    JAVA_HOME: %JAVA_HOME%
 echo  ============================================
 echo.
 
 :: Check Java
-java -version >nul 2>&1
+java -version 2>&1 | findstr "version"
 if %errorlevel% neq 0 (
     echo  Java not found! Install JDK 21:
     echo  https://adoptium.net/download/
