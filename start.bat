@@ -1,5 +1,5 @@
 @echo off
-set JAVA_HOME=D:\cursor\jdk21
+set JAVA_HOME=C:\大学\暑期开源软件\jdk
 set PATH=%JAVA_HOME%\bin;%PATH%
 title CVS Server
 
