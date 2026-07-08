@@ -46,6 +46,9 @@ const API = {
     request(`/vote-sessions/${sessionId}/close?teacherId=${teacherId}`, { method: 'PUT' }),
   getCourseVotes: (courseId) => request(`/vote-sessions/by-course/${courseId}`),
 
+  // 投票学生情况
+  getVoteStudents: (sessionId) => request(`/vote-sessions/${sessionId}/students`),
+
   // 统计
   getOverview: (courseId) => request(`/statistics/courses/${courseId}/overview`),
   getKpMastery: (courseId) => request(`/statistics/courses/${courseId}/knowledge-points`),

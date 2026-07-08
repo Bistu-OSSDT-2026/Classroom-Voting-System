@@ -30,6 +30,9 @@ public class VoteSession {
     @Column(nullable = false, length = 10)
     private Status status;
 
+    @Column(name = "anonymous", nullable = false)
+    private boolean anonymous = false;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -47,11 +50,12 @@ public class VoteSession {
 
     public VoteSession() {}
 
-    public VoteSession(String title, Course course, KnowledgePoint knowledgePoint, User teacher) {
+    public VoteSession(String title, Course course, KnowledgePoint knowledgePoint, User teacher, boolean anonymous) {
         this.title = title;
         this.course = course;
         this.knowledgePoint = knowledgePoint;
         this.teacher = teacher;
+        this.anonymous = anonymous;
         this.status = Status.ACTIVE;
     }
 
@@ -67,6 +71,8 @@ public class VoteSession {
     public void setTeacher(User teacher) { this.teacher = teacher; }
     public Status getStatus() { return status; }
     public void setStatus(Status status) { this.status = status; }
+    public boolean isAnonymous() { return anonymous; }
+    public void setAnonymous(boolean anonymous) { this.anonymous = anonymous; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

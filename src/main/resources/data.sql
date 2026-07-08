@@ -24,9 +24,9 @@ INSERT INTO knowledge_points (name, description, course_id, created_at) VALUES
 ('排序算法', '冒泡、快排、归并排序', 2, NOW());
 
 -- 投票会话
-INSERT INTO vote_sessions (title, course_id, knowledge_point_id, teacher_id, status, created_at) VALUES
-('面向对象概念理解测试', 1, 2, 1, 'ACTIVE', NOW()),
-('排序算法掌握度检测', 2, 5, 1, 'ACTIVE', NOW());
+INSERT INTO vote_sessions (title, course_id, knowledge_point_id, teacher_id, status, anonymous, created_at) VALUES
+('面向对象概念理解测试', 1, 2, 1, 'ACTIVE', FALSE, NOW()),
+('排序算法掌握度检测', 2, 5, 1, 'ACTIVE', FALSE, NOW());
 
 -- 投票选项 (A/B/C/D 每题一个正确答案)
 INSERT INTO vote_options (text, is_correct, vote_session_id) VALUES

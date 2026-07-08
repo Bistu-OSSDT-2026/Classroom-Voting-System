@@ -18,6 +18,9 @@ public class CreateVoteRequest {
     @NotNull(message = "选项列表不能为空")
     private List<OptionItem> options;
 
+    /** true=匿名投票(不显示谁选了啥), false=实名投票(显示学生用户名) */
+    private boolean anonymous = false;
+
     public static class OptionItem {
         @NotBlank
         private String text;
@@ -39,4 +42,6 @@ public class CreateVoteRequest {
     public void setKnowledgePointId(Long knowledgePointId) { this.knowledgePointId = knowledgePointId; }
     public List<OptionItem> getOptions() { return options; }
     public void setOptions(List<OptionItem> options) { this.options = options; }
+    public boolean isAnonymous() { return anonymous; }
+    public void setAnonymous(boolean anonymous) { this.anonymous = anonymous; }
 }

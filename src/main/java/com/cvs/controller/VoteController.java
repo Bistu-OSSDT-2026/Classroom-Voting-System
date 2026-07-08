@@ -87,6 +87,19 @@ public class VoteController {
     }
 
     /**
+     * 获取投票学生参与情况（教师用）
+     */
+    @GetMapping("/{sessionId}/students")
+    public ApiResponse<VoteStudentVO> getVoteStudents(@PathVariable Long sessionId) {
+        try {
+            VoteStudentVO vo = voteService.getVoteStudents(sessionId);
+            return ApiResponse.success(vo);
+        } catch (RuntimeException e) {
+            return ApiResponse.error(400, e.getMessage());
+        }
+    }
+
+    /**
      * 获取课程下所有投票列表
      */
     @GetMapping("/by-course/{courseId}")
