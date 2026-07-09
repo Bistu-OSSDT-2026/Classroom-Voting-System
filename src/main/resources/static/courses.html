@@ -69,17 +69,14 @@
       }
 
       list.innerHTML = res.data.map(c => `
-        <div class="course-card">
-          <div class="course-card-body">
-            <div class="course-icon">📚</div>
-            <div class="course-info">
-              <strong>${escHtml(c.name)}</strong>
-              <div class="course-meta">
-                👨‍🏫 ${escHtml(c.teacherName)} &nbsp;|&nbsp; 📝 ${escHtml(c.description || '暂无描述')}
-              </div>
+        <div class="list-item">
+          <div>
+            <strong>📚 ${escHtml(c.name)}</strong>
+            <div style="font-size:0.8rem;color:var(--text-light)">
+              👨‍🏫 ${escHtml(c.teacherName)} &nbsp;|&nbsp; ${escHtml(c.description || '暂无描述')}
             </div>
           </div>
-          <div class="course-card-actions">
+          <div style="display:flex;gap:0.5rem">
             <button class="btn btn-outline btn-sm" onclick="goDetail(${c.id})">进入课程</button>
             ${user.role === 'TEACHER' && c.teacherId === user.id ? 
               `<button class="btn btn-danger btn-sm" onclick="deleteCourse(${c.id})">删除</button>` : ''}
