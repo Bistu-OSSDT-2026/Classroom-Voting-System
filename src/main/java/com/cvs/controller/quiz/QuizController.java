@@ -79,6 +79,17 @@ public class QuizController {
         }
     }
 
+    @GetMapping("/list")
+    @Operation(summary = "获取题目列表", description = "获取所有抢答题目列表，按创建时间降序")
+    public Result<List<QuizStatusVO>> listAll() {
+        try {
+            List<QuizStatusVO> list = quizService.listAll();
+            return Result.success(list);
+        } catch (RuntimeException e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
     @GetMapping("/rank/{id}")
     @Operation(summary = "获取前3名排行榜", description = "获取某题答对者按提交时间升序的前3名，优先从Redis ZSET获取")
     public Result<List<QuizRankVO>> getTopRank(

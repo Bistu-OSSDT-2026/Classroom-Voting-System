@@ -26,7 +26,7 @@ spring:
     show-sql: false
     defer-datasource-initialization: true
 
-  # Redis 配置
+  # Redis 配置（抢答功能需要，无 Redis 时应用仍可启动预览现有功能）
   data:
     redis:
       host: localhost
@@ -44,6 +44,11 @@ spring:
     init:
       mode: always
       data-locations: classpath:data.sql
+
+# 抢答功能 Redis 开关（安装 Redis 后设为 true 启用抢答缓存功能）
+app:
+  redis:
+    enabled: false
 
 # MyBatis-Plus 配置
 mybatis-plus:

@@ -9,8 +9,8 @@ import com.cvs.model.quiz.QuizQuestion;
 import com.cvs.model.quiz.QuizRecord;
 import com.cvs.model.quiz.QuizStudent;
 import com.cvs.service.quiz.QuizService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
@@ -27,8 +27,15 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class QuizServiceImpl implements QuizService {
+
+    public QuizServiceImpl(QuizQuestionMapper questionMapper,
+                           QuizRecordMapper recordMapper,
+                           QuizStudentMapper studentMapper) {
+        this.questionMapper = questionMapper;
+        this.recordMapper = recordMapper;
+        this.studentMapper = studentMapper;
+    }
 
     // ======================== Redis Key 常量 ========================
 
@@ -46,7 +53,15 @@ public class QuizServiceImpl implements QuizService {
     private final QuizQuestionMapper questionMapper;
     private final QuizRecordMapper recordMapper;
     private final QuizStudentMapper studentMapper;
-    private final StringRedisTemplate stringRedisTemplate;
+
+    /** Redis 操作（无 Redis 时可为 null，降级为数据库操作） */
+    @Autowired(required = false)
+    private StringRedisTemplate stringRedisTemplate;
+
+    /** Redis 是否可用 */
+    private boolean redisAvailable() {
+        return stringRedisTemplate != null;
+    }
 
     // ======================== 1. 创建题目 ========================
 
@@ -91,15 +106,17 @@ public class QuizServiceImpl implements QuizService {
         question.setStartedAt(LocalDateTime.now());
         questionMapper.updateById(question);
 
-        // ---- Redis 缓存操作 ----
-        // 1. 设置当前活跃题目
-        stringRedisTemplate.opsForValue().set(KEY_ACTIVE, String.valueOf(questionId), 1, TimeUnit.HOURS);
+        // ---- Redis 缓存操作（Redis 可用时） ----
+        if (redisAvailable()) {
+            // 1. 设置当前活跃题目
+            stringRedisTemplate.opsForValue().set(KEY_ACTIVE, String.valueOf(questionId), 1, TimeUnit.HOURS);
 
-        // 2. 缓存题目基本信息（5分钟过期）
-        String infoKey = KEY_INFO + questionId;
-        Map<String, String> infoMap = buildInfoMap(question);
-        stringRedisTemplate.opsForHash().putAll(infoKey, infoMap);
-        stringRedisTemplate.expire(infoKey, 5, TimeUnit.MINUTES);
+            // 2. 缓存题目基本信息（5分钟过期）
+            String infoKey = KEY_INFO + questionId;
+            Map<String, String> infoMap = buildInfoMap(question);
+            stringRedisTemplate.opsForHash().putAll(infoKey, infoMap);
+            stringRedisTemplate.expire(infoKey, 5, TimeUnit.MINUTES);
+        }
 
         log.info("开始抢答, questionId={}, startedAt={}", questionId, question.getStartedAt());
         return buildStatusVO(question, 0, 0);
@@ -123,19 +140,21 @@ public class QuizServiceImpl implements QuizService {
             throw new RuntimeException("题目不在抢答进行中, 当前状态=" + question.getStatus());
         }
 
-        // ---- 3.2 Redis 分布式锁防止重复提交 ----
-        String lockKey = KEY_LOCK + questionId + ":" + studentId;
-        // Lua 脚本：SET NX + EX 原子操作
-        String lockScript = "if redis.call('setnx', KEYS[1], ARGV[1]) == 1 then " +
-                "redis.call('expire', KEYS[1], ARGV[2]); return 1; " +
-                "else return 0; end";
-        Boolean locked = stringRedisTemplate.execute(
-                new DefaultRedisScript<>(lockScript, Boolean.class),
-                Collections.singletonList(lockKey),
-                "locked", "5");
+        // ---- 3.2 Redis 分布式锁防止重复提交（Redis 可用时） ----
+        if (redisAvailable()) {
+            String lockKey = KEY_LOCK + questionId + ":" + studentId;
+            // Lua 脚本：SET NX + EX 原子操作
+            String lockScript = "if redis.call('setnx', KEYS[1], ARGV[1]) == 1 then " +
+                    "redis.call('expire', KEYS[1], ARGV[2]); return 1; " +
+                    "else return 0; end";
+            Boolean locked = stringRedisTemplate.execute(
+                    new DefaultRedisScript<>(lockScript, Boolean.class),
+                    Collections.singletonList(lockKey),
+                    "locked", "5");
 
-        if (Boolean.FALSE.equals(locked)) {
-            throw new RuntimeException("请勿重复提交");
+            if (Boolean.FALSE.equals(locked)) {
+                throw new RuntimeException("请勿重复提交");
+            }
         }
 
         try {
@@ -162,24 +181,36 @@ public class QuizServiceImpl implements QuizService {
                     .build();
             recordMapper.insert(record);
 
-            // ---- 3.6 答对则写入 Redis ZSET 排名 ----
+            // ---- 3.6 答对则写入 Redis ZSET 排名（Redis 不可用时回查数据库） ----
             Integer rank = null;
             int totalCorrect = 0;
 
             if (isCorrect) {
-                String rankKey = KEY_RANK + questionId;
-                // ZADD 原子操作，score 使用毫秒级时间戳
-                stringRedisTemplate.opsForZSet().add(rankKey, String.valueOf(studentId), nowMillis);
+                if (redisAvailable()) {
+                    String rankKey = KEY_RANK + questionId;
+                    // ZADD 原子操作，score 使用毫秒级时间戳
+                    stringRedisTemplate.opsForZSet().add(rankKey, String.valueOf(studentId), nowMillis);
 
-                // 查询当前排名（从1开始）
-                Long zRank = stringRedisTemplate.opsForZSet().rank(rankKey, String.valueOf(studentId));
-                rank = (zRank != null) ? zRank.intValue() + 1 : 1;
+                    // 查询当前排名（从1开始）
+                    Long zRank = stringRedisTemplate.opsForZSet().rank(rankKey, String.valueOf(studentId));
+                    rank = (zRank != null) ? zRank.intValue() + 1 : 1;
 
-                // 查询答对总人数
-                Long total = stringRedisTemplate.opsForZSet().zCard(rankKey);
-                totalCorrect = (total != null) ? total.intValue() : 1;
+                    // 查询答对总人数
+                    Long total = stringRedisTemplate.opsForZSet().zCard(rankKey);
+                    totalCorrect = (total != null) ? total.intValue() : 1;
+                } else {
+                    // Redis 不可用，从数据库查询答对排名
+                    List<Map<String, Object>> rankList = recordMapper.selectRankByQuestionId(questionId);
+                    for (int i = 0; i < rankList.size(); i++) {
+                        Long sid = ((Number) rankList.get(i).get("student_id")).longValue();
+                        if (sid.equals(studentId)) {
+                            rank = i + 1;
+                            break;
+                        }
+                    }
+                    totalCorrect = rankList.size();
+                }
             } else {
-                // 答错也统计已提交人数（从数据库查询）
                 Long total = recordMapper.selectCount(
                         new LambdaQueryWrapper<QuizRecord>()
                                 .eq(QuizRecord::getQuestionId, questionId)
@@ -201,7 +232,9 @@ public class QuizServiceImpl implements QuizService {
             throw e;
         } finally {
             // 释放分布式锁
-            stringRedisTemplate.delete(lockKey);
+            if (redisAvailable()) {
+                stringRedisTemplate.delete(KEY_LOCK + questionId + ":" + studentId);
+            }
         }
     }
 
@@ -210,39 +243,41 @@ public class QuizServiceImpl implements QuizService {
     @Override
     public QuizStatusVO getStatus(Long questionId) {
         // 优先从 Redis 缓存获取
-        String infoKey = KEY_INFO + questionId;
-        Map<Object, Object> cacheMap = stringRedisTemplate.opsForHash().entries(infoKey);
+        if (redisAvailable()) {
+            String infoKey = KEY_INFO + questionId;
+            Map<Object, Object> cacheMap = stringRedisTemplate.opsForHash().entries(infoKey);
 
-        if (!cacheMap.isEmpty()) {
-            QuizStatusVO vo = new QuizStatusVO();
-            vo.setId(Long.valueOf((String) cacheMap.get("id")));
-            vo.setTitle((String) cacheMap.get("title"));
-            vo.setOptionA((String) cacheMap.get("optionA"));
-            vo.setOptionB((String) cacheMap.get("optionB"));
-            vo.setOptionC((String) cacheMap.get("optionC"));
-            vo.setOptionD((String) cacheMap.get("optionD"));
-            vo.setStatus((String) cacheMap.get("status"));
+            if (!cacheMap.isEmpty()) {
+                QuizStatusVO vo = new QuizStatusVO();
+                vo.setId(Long.valueOf((String) cacheMap.get("id")));
+                vo.setTitle((String) cacheMap.get("title"));
+                vo.setOptionA((String) cacheMap.get("optionA"));
+                vo.setOptionB((String) cacheMap.get("optionB"));
+                vo.setOptionC((String) cacheMap.get("optionC"));
+                vo.setOptionD((String) cacheMap.get("optionD"));
+                vo.setStatus((String) cacheMap.get("status"));
 
-            String startedAt = (String) cacheMap.get("startedAt");
-            if (startedAt != null) {
-                vo.setStartedAt(LocalDateTime.parse(startedAt, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                String startedAt = (String) cacheMap.get("startedAt");
+                if (startedAt != null) {
+                    vo.setStartedAt(LocalDateTime.parse(startedAt, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                }
+
+                // 从 ZSET 获取统计
+                String rankKey = KEY_RANK + questionId;
+                Long correctCount = stringRedisTemplate.opsForZSet().zCard(rankKey);
+                vo.setCorrectCount(correctCount != null ? correctCount.intValue() : 0);
+
+                // 已提交人数从数据库查询（答对+答错）
+                Long submitted = recordMapper.selectCount(
+                        new LambdaQueryWrapper<QuizRecord>()
+                                .eq(QuizRecord::getQuestionId, questionId));
+                vo.setSubmittedCount(submitted != null ? submitted.intValue() : 0);
+
+                return vo;
             }
-
-            // 从 ZSET 获取统计
-            String rankKey = KEY_RANK + questionId;
-            Long correctCount = stringRedisTemplate.opsForZSet().zCard(rankKey);
-            vo.setCorrectCount(correctCount != null ? correctCount.intValue() : 0);
-
-            // 已提交人数从数据库查询（答对+答错）
-            Long submitted = recordMapper.selectCount(
-                    new LambdaQueryWrapper<QuizRecord>()
-                            .eq(QuizRecord::getQuestionId, questionId));
-            vo.setSubmittedCount(submitted != null ? submitted.intValue() : 0);
-
-            return vo;
         }
 
-        // 缓存未命中，查数据库
+        // 缓存未命中或 Redis 不可用，查数据库
         QuizQuestion question = questionMapper.selectById(questionId);
         if (question == null) {
             throw new RuntimeException("题目不存在");
@@ -259,38 +294,61 @@ public class QuizServiceImpl implements QuizService {
         return buildStatusVO(question, (int) submittedCount, (int) correctCount);
     }
 
-    // ======================== 5. 获取前3名排行榜 ========================
+    // ======================== 5. 获取所有题目列表 ========================
+
+    @Override
+    public List<QuizStatusVO> listAll() {
+        List<QuizQuestion> list = questionMapper.selectAllOrderByCreatedAtDesc();
+        if (list == null || list.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<QuizStatusVO> result = new ArrayList<>();
+        for (QuizQuestion q : list) {
+            long correctCount = recordMapper.selectCount(
+                    new LambdaQueryWrapper<QuizRecord>()
+                            .eq(QuizRecord::getQuestionId, q.getId())
+                            .eq(QuizRecord::getIsCorrect, true));
+            long submittedCount = recordMapper.selectCount(
+                    new LambdaQueryWrapper<QuizRecord>()
+                            .eq(QuizRecord::getQuestionId, q.getId()));
+            result.add(buildStatusVO(q, (int) submittedCount, (int) correctCount));
+        }
+        return result;
+    }
+
+    // ======================== 6. 获取前3名排行榜 ========================
 
     @Override
     public List<QuizRankVO> getTopRank(Long questionId) {
-        String rankKey = KEY_RANK + questionId;
+        // ---- 优先从 Redis ZSET 获取（Redis 可用时） ----
+        if (redisAvailable()) {
+            String rankKey = KEY_RANK + questionId;
+            Set<String> topMembers = stringRedisTemplate.opsForZSet()
+                    .range(rankKey, 0, 2); // 前3名
 
-        // ---- 优先从 Redis ZSET 获取 ----
-        Set<String> topMembers = stringRedisTemplate.opsForZSet()
-                .range(rankKey, 0, 2); // 前3名
+            if (topMembers != null && !topMembers.isEmpty()) {
+                List<QuizRankVO> rankList = new ArrayList<>();
+                int rank = 1;
+                for (String member : topMembers) {
+                    Long studentId = Long.valueOf(member);
+                    Double score = stringRedisTemplate.opsForZSet().score(rankKey, member);
 
-        if (topMembers != null && !topMembers.isEmpty()) {
-            List<QuizRankVO> rankList = new ArrayList<>();
-            int rank = 1;
-            for (String member : topMembers) {
-                Long studentId = Long.valueOf(member);
-                Double score = stringRedisTemplate.opsForZSet().score(rankKey, member);
+                    // 查询学生姓名
+                    QuizStudent student = studentMapper.selectById(studentId);
+                    String studentName = (student != null) ? student.getRealName() : "未知";
 
-                // 查询学生姓名
-                QuizStudent student = studentMapper.selectById(studentId);
-                String studentName = (student != null) ? student.getRealName() : "未知";
-
-                QuizRankVO vo = QuizRankVO.builder()
-                        .rank(rank++)
-                        .studentName(studentName)
-                        .submitTime(formatSubmitTime(score))
-                        .build();
-                rankList.add(vo);
+                    QuizRankVO vo = QuizRankVO.builder()
+                            .rank(rank++)
+                            .studentName(studentName)
+                            .submitTime(formatSubmitTime(score))
+                            .build();
+                    rankList.add(vo);
+                }
+                return rankList;
             }
-            return rankList;
         }
 
-        // ---- Redis 无数据，回查数据库 ----
+        // ---- Redis 无数据或不可用，回查数据库 ----
         List<Map<String, Object>> dbRankList = recordMapper.selectRankByQuestionId(questionId);
         if (dbRankList == null || dbRankList.isEmpty()) {
             return Collections.emptyList();

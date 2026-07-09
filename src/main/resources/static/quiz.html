@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>课堂抢答 - 课堂投票系统</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .quiz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .quiz-full { grid-column: 1 / -1; }
+    .option-btn {
+      display: block; width: 100%; padding: 0.8rem 1rem; margin-bottom: 0.5rem;
+      border: 2px solid var(--border); border-radius: 8px;
+      background: var(--bg); cursor: pointer; text-align: left; font-size: 1rem;
+      transition: all 0.2s;
+    }
+    .option-btn:hover { border-color: var(--primary); background: #f0f4ff; }
+    .option-btn.selected { border-color: var(--primary); background: #dbeafe; font-weight: 600; }
+    .option-btn.correct { border-color: #22c55e; background: #dcfce7; }
+    .option-btn.wrong { border-color: #ef4444; background: #fee2e2; }
+    .option-btn:disabled { cursor: not-allowed; opacity: 0.7; }
+    .badge {
+      display: inline-block; padding: 0.2rem 0.6rem; border-radius: 12px;
+      font-size: 0.75rem; font-weight: 600;
+    }
+    .badge-pending { background: #fef3c7; color: #92400e; }
+    .badge-active { background: #dcfce7; color: #166534; }
+    .badge-closed { background: #e2e8f0; color: #475569; }
+    .rank-list { list-style: none; padding: 0; margin: 0; }
+    .rank-item {
+      display: flex; align-items: center; gap: 0.8rem;
+      padding: 0.7rem 1rem; border-bottom: 1px solid var(--border);
+    }
+    .rank-num {
+      width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      border-radius: 50%; font-weight: 700; font-size: 0.85rem;
+    }
+    .rank-1 { background: #fbbf24; color: #fff; }
+    .rank-2 { background: #94a3b8; color: #fff; }
+    .rank-3 { background: #d97706; color: #fff; }
+    .rank-other { background: #e2e8f0; color: #64748b; }
+    .result-toast {
+      position: fixed; top: 1rem; right: 1rem; padding: 1rem 1.5rem;
+      border-radius: 8px; color: #fff; font-weight: 600; z-index: 1000;
+      animation: slideIn 0.3s ease;
+    }
+    .result-toast.success { background: #22c55e; }
+    .result-toast.fail { background: #ef4444; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .timer { font-size: 1.2rem; font-weight: 700; color: var(--primary); }
+    .empty-state { text-align: center; padding: 2rem; color: var(--text-light); }
+    .modal-overlay { display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; z-index: 999; }
+    .modal-overlay.hidden { display: none; }
+    .modal { background: #fff; border-radius: 12px; padding: 1.5rem; min-width: 360px; max-width: 500px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+    .modal h3 { margin-top: 0; }
+    @media (max-width: 768px) { .quiz-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<div class="header">
+  <h1>⚡ 课堂抢答</h1>
+  <span class="user-info" id="user-info"></span>
+  <button onclick="logout()">退出登录</button>
+</div>
+
+<div class="nav-tabs">
+  <a href="/courses.html">课程列表</a>
+  <a href="javascript:void(0)" onclick="goStats()">数据统计</a>
+  <a href="/quiz.html" class="active">课堂抢答</a>
+</div>
+
+<div class="container">
+  <!-- 教师：创建题目表单（仅教师可见） -->
+  <div id="teacher-create" class="card quiz-full">
+    <h3>📝 创建抢答题目 <span id="create-role-hint" class="badge badge-student" style="font-size:0.75rem;vertical-align:middle">学生不可用</span></h3>
+    <div class="form-group"><label>题目</label><input id="q-title" placeholder="输入题目内容"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+      <div class="form-group"><label>A 选项</label><input id="q-optA" placeholder="A选项"></div>
+      <div class="form-group"><label>B 选项</label><input id="q-optB" placeholder="B选项"></div>
+      <div class="form-group"><label>C 选项（可选）</label><input id="q-optC" placeholder="C选项（可选）"></div>
+      <div class="form-group"><label>D 选项（可选）</label><input id="q-optD" placeholder="D选项（可选）"></div>
+    </div>
+    <div class="form-group">
+      <label>正确答案</label>
+      <select id="q-answer">
+        <option value="A">A</option>
+        <option value="B">B</option>
+        <option value="C">C</option>
+        <option value="D">D</option>
+      </select>
+    </div>
+    <button id="create-btn" class="btn btn-primary" onclick="createQuestion()">创建题目</button>
+  </div>
+
+  <!-- 题目列表 -->
+  <div class="card quiz-full">
+    <h3>📋 抢答题目列表</h3>
+    <div id="quiz-list"><div class="empty-state">加载中...</div></div>
+  </div>
+
+  <!-- 抢答区（学生/教师共用） -->
+  <div id="active-quiz-area" class="hidden quiz-full">
+    <div class="card">
+      <div id="active-quiz-content"></div>
+    </div>
+  </div>
+
+  <!-- 排行榜 -->
+  <div id="rank-area" class="hidden quiz-full">
+    <div class="card">
+      <h3>🏆 排行榜（前3名）</h3>
+      <div id="rank-content"><div class="empty-state">暂无数据</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 提交结果弹窗 -->
+<div id="result-modal" class="modal-overlay hidden">
+  <div class="modal" style="text-align:center">
+    <div id="result-icon" style="font-size:4rem;margin-bottom:0.5rem"></div>
+    <h2 id="result-title"></h2>
+    <p id="result-detail" style="color:var(--text-light);margin-bottom:1.5rem"></p>
+    <button class="btn btn-primary" onclick="closeResultModal()">知道了</button>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+  const user = JSON.parse(sessionStorage.getItem('cvs_user'));
+  if (!user) { window.location.href = '/login.html'; }
+
+  const isTeacher = user.role === 'TEACHER';
+  let pollingTimer = null;
+  let activeQuestionId = null;
+
+  document.getElementById('user-info').textContent =
+    `${user.realName} (${isTeacher ? '教师' : '学生'}) | ID: ${user.id}`;
+
+  function logout() { sessionStorage.clear(); window.location.href = '/login.html'; }
+  function goStats() { window.location.href = '/statistics.html'; }
+
+  // ====================== 教师：创建题目 ======================
+
+  async function createQuestion() {
+    const title = document.getElementById('q-title').value.trim();
+    const optionA = document.getElementById('q-optA').value.trim();
+    const optionB = document.getElementById('q-optB').value.trim();
+    const optionC = document.getElementById('q-optC').value.trim();
+    const optionD = document.getElementById('q-optD').value.trim();
+    const correctAnswer = document.getElementById('q-answer').value;
+
+    if (!title || !optionA || !optionB) return alert('请填写题目和A/B选项');
+    if (!correctAnswer) return alert('请选择正确答案');
+
+    try {
+      const res = await API.quiz.create({ title, optionA, optionB, optionC, optionD, correctAnswer, createdBy: user.id });
+      showToast('✅ 题目创建成功', 'success');
+      document.getElementById('q-title').value = '';
+      document.getElementById('q-optA').value = '';
+      document.getElementById('q-optB').value = '';
+      document.getElementById('q-optC').value = '';
+      document.getElementById('q-optD').value = '';
+	      loadAllQuestions();
+    } catch (err) { alert(err.message); }
+  }
+
+  // ====================== 加载题目列表 ======================
+
+  async function loadAllQuestions() {
+    const listEl = document.getElementById('quiz-list');
+    listEl.innerHTML = `<div class="empty-state">正在加载...</div>`;
+
+    let questions = [];
+    try {
+      const res = await API.quiz.list();
+      questions = res.data || [];
+    } catch (e) {
+      listEl.innerHTML = `<div class="empty-state">加载失败：${e.message}</div>`;
+      return;
+    }
+
+    if (questions.length === 0) {
+      listEl.innerHTML = `<div class="empty-state">暂无抢答题目，${
+        isTeacher ? '请在上方创建' : '等待教师创建题目'
+      }</div>`;
+      return;
+    }
+
+    // 找出活跃题目
+    const active = questions.find(q => q.status === 'ACTIVE');
+    if (active) {
+      activeQuestionId = active.id;
+      showActiveQuiz(active);
+      startPolling(active.id);
+    } else {
+      document.getElementById('active-quiz-area').classList.add('hidden');
+      if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; }
+    }
+
+    // 渲染表格
+    listEl.innerHTML = questions.map(q => `
+      <div class="list-item">
+        <div style="flex:1">
+          <strong>${escHtml(q.title)}</strong>
+          <div style="font-size:0.85rem;color:var(--text-light);margin-top:0.2rem">
+            状态：<span class="badge badge-${q.status.toLowerCase()}">${statusText(q.status)}</span>
+            ${q.status === 'CLOSED' ? `| 答对：${q.correctCount} 人 | 提交：${q.submittedCount} 人` : ''}
+          </div>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          ${q.status === 'ACTIVE' ? '<span class="timer">🔴 进行中</span>' : ''}
+          ${isTeacher && q.status === 'PENDING' ? `
+            <button class="btn btn-success btn-sm" onclick="startQuiz(${q.id})">开始抢答</button>
+          ` : ''}
+          ${q.status === 'CLOSED' ? `
+            <button class="btn btn-outline btn-sm" onclick="showRank(${q.id})">排行榜</button>
+          ` : ''}
+          ${!isTeacher && q.status === 'ACTIVE' ? `
+            <button class="btn btn-primary btn-sm" onclick="scrollToQuiz()">去抢答</button>
+          ` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function statusText(s) {
+    return { 'PENDING': '待开始', 'ACTIVE': '进行中', 'CLOSED': '已结束' }[s] || s;
+  }
+
+  // ====================== 开始抢答（教师） ======================
+
+  async function startQuiz(id) {
+    if (!confirm('确定开始抢答？')) return;
+    try {
+      await API.quiz.start(id);
+      showToast('🚀 抢答已开始！', 'success');
+      // 停止之前的轮询
+      if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; }
+      loadAllQuestions();
+    } catch (err) { alert(err.message); }
+  }
+
+  // ====================== 展示活跃抢答 ======================
+
+  function showActiveQuiz(quiz) {
+    const area = document.getElementById('active-quiz-area');
+    area.classList.remove('hidden');
+    const options = [
+      { label: 'A', text: quiz.optionA },
+      { label: 'B', text: quiz.optionB },
+    ];
+    if (quiz.optionC) options.push({ label: 'C', text: quiz.optionC });
+    if (quiz.optionD) options.push({ label: 'D', text: quiz.optionD });
+
+    document.getElementById('active-quiz-content').innerHTML = `
+      <h3>⚡ 抢答进行中</h3>
+      <p style="font-size:1.1rem;font-weight:500;margin-bottom:1rem">${escHtml(quiz.title)}</p>
+      <div id="options-container">
+        ${options.map(o => `
+          <button class="option-btn" data-answer="${o.label}" onclick="selectOption(this, '${o.label}')"
+            ${!isTeacher ? '' : 'disabled'}>
+            <strong>${o.label}.</strong> ${escHtml(o.text)}
+          </button>
+        `).join('')}
+      </div>
+      ${!isTeacher ? `
+        <button class="btn btn-primary" id="submit-btn" onclick="submitAnswer(${quiz.id})" disabled
+          style="margin-top:0.5rem">提交答案</button>
+      ` : `
+        <div style="margin-top:0.8rem;padding:0.5rem 1rem;background:#f0f4ff;border-radius:8px;font-size:0.9rem">
+          💡 教师视角：学生正在作答...
+        </div>
+      `}
+    `;
+  }
+
+  let selectedAnswer = null;
+
+  function selectOption(el, answer) {
+    if (isTeacher) return;
+    document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedAnswer = answer;
+    document.getElementById('submit-btn').disabled = false;
+  }
+
+  function scrollToQuiz() {
+    document.getElementById('active-quiz-area').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // ====================== 提交答案（学生） ======================
+
+  async function submitAnswer(questionId) {
+    if (!selectedAnswer) return alert('请先选择一个答案');
+    if (!confirm(`确认选择 ${selectedAnswer} 选项？`)) return;
+
+    try {
+      const res = await API.quiz.submit({ questionId, studentId: user.id, selectedAnswer });
+      const data = res.data;
+
+      // 显示正确/错误标记
+      document.querySelectorAll('.option-btn').forEach(b => {
+        b.disabled = true;
+        if (b.dataset.answer === data.correctAnswer) b.classList.add('correct');
+        if (b.dataset.answer === selectedAnswer && !data.correct) b.classList.add('wrong');
+      });
+      document.getElementById('submit-btn').disabled = true;
+
+      // 弹窗显示结果
+      const modal = document.getElementById('result-modal');
+      document.getElementById('result-icon').textContent = data.correct ? '🎉' : '😅';
+      document.getElementById('result-title').textContent = data.correct ? '回答正确！' : '回答错误';
+      document.getElementById('result-detail').innerHTML = data.correct
+        ? `排名第 <strong>${data.rank}</strong> 名（共 ${data.totalCorrect} 人答对）<br>正确答案：<strong>${data.correctAnswer}</strong>`
+        : `正确答案是 <strong>${data.correctAnswer}</strong>，下次加油！`;
+      modal.classList.remove('hidden');
+
+      // 更新排行榜
+      showRank(questionId);
+      // 停止轮询
+      if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; }
+      // 2秒后刷新列表
+      setTimeout(loadAllQuestions, 2000);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  function closeResultModal() {
+    document.getElementById('result-modal').classList.add('hidden');
+  }
+
+  // ====================== 排行榜 ======================
+
+  async function showRank(questionId) {
+    try {
+      const res = await API.quiz.rank(questionId);
+      const data = res.data;
+      const area = document.getElementById('rank-area');
+      const content = document.getElementById('rank-content');
+
+      if (!data || data.length === 0) {
+        area.classList.remove('hidden');
+        content.innerHTML = '<div class="empty-state">暂无答对记录</div>';
+        return;
+      }
+
+      area.classList.remove('hidden');
+      content.innerHTML = `<ul class="rank-list">
+        ${data.map((r, i) => {
+          const rankClass = r.rank === 1 ? 'rank-1' : r.rank === 2 ? 'rank-2' : r.rank === 3 ? 'rank-3' : 'rank-other';
+          const medal = r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : `${r.rank}`;
+          return `<li class="rank-item">
+            <span class="rank-num ${rankClass}">${medal}</span>
+            <span style="flex:1;font-weight:500">${escHtml(r.studentName)}</span>
+            <span style="color:var(--text-light);font-size:0.85rem">${r.submitTime ? r.submitTime.substring(11, 23) : ''}</span>
+          </li>`;
+        }).join('')}
+      </ul>`;
+    } catch (err) {
+      // 忽略
+    }
+  }
+
+  // ====================== 轮询活跃题目状态 ======================
+
+  function startPolling(questionId) {
+    if (pollingTimer) clearInterval(pollingTimer);
+    pollingTimer = setInterval(async () => {
+      try {
+        const res = await API.quiz.status(questionId);
+        if (res.data.status === 'CLOSED') {
+          clearInterval(pollingTimer);
+          pollingTimer = null;
+          showToast('🔔 抢答已结束', 'success');
+          loadAllQuestions();
+          showRank(questionId);
+        }
+      } catch (e) { /* ignore */ }
+    }, 3000);
+  }
+
+  // ====================== Toast 提示 ======================
+
+  function showToast(msg, type) {
+    const toast = document.createElement('div');
+    toast.className = `result-toast ${type}`;
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.remove(); }, 3000);
+  }
+
+  // ====================== 工具函数 ======================
+
+  function escHtml(s) {
+    if (!s) return '';
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // ====================== 初始化 ======================
+
+  // 非教师：禁用创建表单，显示提示
+  if (!isTeacher) {
+    document.querySelectorAll('#teacher-create input, #teacher-create select, #teacher-create button')
+      .forEach(el => el.disabled = true);
+    document.getElementById('create-role-hint').textContent = '仅教师可创建';
+    document.getElementById('create-role-hint').className = 'badge badge-active';
+  } else {
+    document.getElementById('create-role-hint').textContent = '👨‍🏫 教师模式';
+    document.getElementById('create-role-hint').className = 'badge badge-teacher';
+  }
+
+  // 加载题目列表
+  loadAllQuestions();
+</script>
+</body>
+</html>

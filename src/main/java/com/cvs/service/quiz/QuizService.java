@@ -53,6 +53,13 @@ public interface QuizService {
     QuizStatusVO getStatus(Long questionId);
 
     /**
+     * 获取所有题目列表（按创建时间降序）
+     *
+     * @return 题目列表
+     */
+    List<QuizStatusVO> listAll();
+
+    /**
      * 获取前3名排行榜
      * <p>
      * 优先从 Redis ZSET 获取，若 Redis 无数据则回查数据库
