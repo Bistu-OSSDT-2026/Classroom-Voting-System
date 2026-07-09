@@ -116,7 +116,7 @@
               <strong>${escHtml(v.title)}</strong>
               <div style="font-size:0.8rem">
                 <span class="badge ${v.status==='ACTIVE'?'badge-active':'badge-closed'}">${v.status==='ACTIVE'?'进行中':'已关闭'}</span>
-                知识点: ${escHtml(v.knowledgePointName)} | ${v.totalVotes} 人已投
+                知识点: ${escHtml(v.knowledgePointName)}${user.role==='TEACHER' ? ' | '+v.totalVotes+' 人已投' : ''}
               </div>
             </div>
             <div style="display:flex;gap:0.3rem">
@@ -215,9 +215,10 @@
       document.getElementById('vote-detail-title').textContent = '📋 ' + v.title;
 
       const totalVotes = v.totalVotes;
+      const studentNotVoted = (user.role === 'STUDENT' && v.hasVoted === false);
       let html = `<p style="color:var(--text-light);margin-bottom:0.5rem">
         状态: <span class="badge ${v.status==='ACTIVE'?'badge-active':'badge-closed'}">${v.status==='ACTIVE'?'进行中':'已关闭'}</span>
-        | 总票数: ${totalVotes}</p>`;
+        ${studentNotVoted ? '' : ' | 总票数: ' + totalVotes}</p>`;
 
       // 老师端：显示正确率反馈（需求2）
       if (user.role === 'TEACHER' && v.correctRate != null && totalVotes > 0) {
@@ -271,20 +272,12 @@
           <div style="display:flex;justify-content:space-between;font-size:0.9rem">
             <span>${escHtml(opt.text)}${optIcon}</span>`;
 
-        // 学生未投票时隐藏票数（需求4）
-        if (user.role === 'STUDENT' && v.hasVoted === false) {
-          html += `<span style="color:var(--text-light)">? 票</span>`;
+        // 学生未投票：完全隐藏票数
+        if (studentNotVoted) {
+          html += `</div>`;
         } else {
-          html += `<span>${opt.voteCount} 票 (${pct}%)</span>`;
-        }
-
-        html += `</div>`;
-
-        // 进度条：学生未投票时显示空条
-        if (user.role === 'STUDENT' && v.hasVoted === false) {
-          html += `<div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>`;
-        } else {
-          html += `<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`;
+          html += `<span>${opt.voteCount} 票 (${pct}%)</span></div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`;
         }
 
         html += `</div>`;
