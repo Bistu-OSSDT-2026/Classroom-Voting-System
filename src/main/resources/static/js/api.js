@@ -53,4 +53,13 @@ const API = {
   getOverview: (courseId) => request(`/statistics/courses/${courseId}/overview`),
   getKpMastery: (courseId) => request(`/statistics/courses/${courseId}/knowledge-points`),
   getStudentMastery: (courseId) => request(`/statistics/courses/${courseId}/students`),
+
+  // 课堂抢答
+  createQuiz: (body) => request('/quiz/create', { method: 'POST', body: JSON.stringify(body) }),
+  startQuiz: (id, teacherId) => request(`/quiz/start/${id}?teacherId=${teacherId}`, { method: 'POST' }),
+  grabQuiz: (body) => request('/quiz/grab', { method: 'POST', body: JSON.stringify(body) }),
+  submitQuiz: (body) => request('/quiz/submit', { method: 'POST', body: JSON.stringify(body) }),
+  getQuizStatus: (id) => request(`/quiz/status/${id}`),
+  getQuizRank: (id) => request(`/quiz/rank/${id}`),
+  getCourseQuizzes: (courseId) => request(`/quiz/by-course/${courseId}`),
 };

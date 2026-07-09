@@ -53,6 +53,17 @@
     <div id="vote-detail-content"></div>
     <button class="btn btn-outline btn-sm" onclick="document.getElementById('vote-detail-card').style.display='none'">收起</button>
   </div>
+
+  <!-- 课堂抢答区 -->
+  <div class="card" style="margin-top:1rem">
+    <h3>⚡ 课堂抢答
+      <span id="quiz-add-btn" class="hidden" style="float:right">
+        <button class="btn btn-primary btn-sm" onclick="showCreateQuizModal()">+ 创建抢答</button>
+      </span>
+    </h3>
+    <div id="quiz-list">加载中...</div>
+    <div id="quiz-detail" style="display:none;margin-top:0.75rem"></div>
+  </div>
 </div>
 
 <!-- 弹窗 -->
@@ -66,6 +77,9 @@
   const courseId = sessionStorage.getItem('cvs_courseId');
   if (!user) { window.location.href = '/login.html'; }
   if (!courseId) { window.location.href = '/courses.html'; }
+  // 暴露变量给外部 JS 文件使用
+  window._cvsUser = user;
+  window._cvsCourseId = Number(courseId);
 
   document.getElementById('user-info').textContent =
     `${user.realName} (${user.role === 'TEACHER' ? '教师' : '学生'}) | ID: ${user.id}`;
@@ -338,5 +352,6 @@
 
   loadAll();
 </script>
+<script src="/js/quiz.js"></script>
 </body>
 </html>
