@@ -1,3 +1,62 @@
+-- ============================================================
+-- 抢答功能模块 - 建表 (MyBatis-Plus 管理, 手动建表)
+-- ============================================================
+
+-- 抢答题目表
+CREATE TABLE IF NOT EXISTS quiz_question (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL COMMENT '题目',
+    option_a VARCHAR(200) NOT NULL COMMENT 'A选项',
+    option_b VARCHAR(200) NOT NULL COMMENT 'B选项',
+    option_c VARCHAR(200) COMMENT 'C选项',
+    option_d VARCHAR(200) COMMENT 'D选项',
+    correct_answer CHAR(1) NOT NULL COMMENT '正确答案(A/B/C/D)',
+    status VARCHAR(10) NOT NULL DEFAULT 'PENDING' COMMENT '状态:PENDING-待开始,ACTIVE-进行中,CLOSED-已结束',
+    created_by BIGINT NOT NULL COMMENT '创建人ID(教师)',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    started_at TIMESTAMP NULL COMMENT '开始时间',
+    closed_at TIMESTAMP NULL COMMENT '结束时间'
+);
+
+-- 抢答记录表
+CREATE TABLE IF NOT EXISTS quiz_record (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    question_id BIGINT NOT NULL COMMENT '题目ID',
+    student_id BIGINT NOT NULL COMMENT '学生ID',
+    selected_answer CHAR(1) NOT NULL COMMENT '选择的答案(A/B/C/D)',
+    is_correct BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否正确',
+    submit_time TIMESTAMP(3) NOT NULL COMMENT '提交时间(精确到毫秒)',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- 唯一索引防重复提交
+    CONSTRAINT uk_question_student UNIQUE (question_id, student_id),
+    -- 联合索引优化排名查询
+    INDEX idx_question_submit (question_id, submit_time)
+);
+
+-- 学生表 (抢答模块专用)
+CREATE TABLE IF NOT EXISTS quiz_student (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    student_no VARCHAR(50) NOT NULL UNIQUE COMMENT '学号',
+    real_name VARCHAR(50) NOT NULL COMMENT '姓名',
+    class_name VARCHAR(100) COMMENT '班级',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 抢答模块示例数据
+INSERT INTO quiz_student (student_no, real_name, class_name) VALUES
+('2024001', '李明', '计算机1班'),
+('2024002', '王芳', '计算机1班'),
+('2024003', '赵强', '计算机1班');
+
+INSERT INTO quiz_question (title, option_a, option_b, option_c, option_d, correct_answer, status, created_by, created_at) VALUES
+('Java中关键字"final"修饰类的作用是什么？', '该类可以被继承', '该类不能被继承', '该类必须实现接口', '该类是抽象的', 'B', 'PENDING', 1, NOW()),
+('以下哪个不是MySQL的聚合函数？', 'SUM', 'COUNT', 'JOIN', 'AVG', 'C', 'PENDING', 1, NOW()),
+('Spring Boot中@RestController的作用是？', '返回视图', '返回JSON/XML', '返回文本', '返回文件', 'B', 'PENDING', 1, NOW());
+
+-- ============================================================
+-- 原有示例数据
+-- ============================================================
+
 -- 示例用户 (密码均为 123456)
 INSERT INTO users (username, password, real_name, role, created_at) VALUES
 ('teacher1', '123456', '张老师', 'TEACHER', NOW()),
