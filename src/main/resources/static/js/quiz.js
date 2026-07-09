@@ -177,7 +177,7 @@
           const letter = String.fromCharCode(65 + i);
           const isCorrect = letter === s.correctOption;
           html += `<div style="padding:0.4rem 0;font-size:0.9rem;${isCorrect ? 'color:var(--success);font-weight:600' : ''}">
-            ${letter}. ${escHtml(o)} ${isCorrect ? '✅' : ''}
+            ${isCorrect ? '✅ ' : ''}${escHtml(o)}
           </div>`;
         });
         html += `<p style="font-size:0.8rem;color:var(--success);margin-top:0.3rem">✅ 正确答案: ${s.correctOption}</p>`;
@@ -213,7 +213,7 @@
         opts.forEach((o, i) => {
           const letter = String.fromCharCode(65 + i);
           optHtml += `<div class="option-card" onclick="selectQuizOpt(this,'${letter}')">
-            <span class="option-radio"></span><span>${letter}. ${escHtml(o)}</span>
+            <span class="option-radio"></span><span>${escHtml(o)}</span>
           </div>`;
         });
         optHtml += `<button class="btn btn-success btn-sm" style="margin-top:0.5rem" id="btn-submit-quiz" disabled onclick="submitQuizAnswer(${questionId})">提交答案</button>`;
