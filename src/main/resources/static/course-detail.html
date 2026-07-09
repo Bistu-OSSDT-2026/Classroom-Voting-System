@@ -215,10 +215,10 @@
       document.getElementById('vote-detail-title').textContent = '📋 ' + v.title;
 
       const totalVotes = v.totalVotes;
-      const studentNotVoted = (user.role === 'STUDENT' && v.hasVoted === false);
+      const isStudent = (user.role === 'STUDENT');
       let html = `<p style="color:var(--text-light);margin-bottom:0.5rem">
         状态: <span class="badge ${v.status==='ACTIVE'?'badge-active':'badge-closed'}">${v.status==='ACTIVE'?'进行中':'已关闭'}</span>
-        ${studentNotVoted ? '' : ' | 总票数: ' + totalVotes}</p>`;
+        ${isStudent ? '' : ' | 总票数: ' + totalVotes}</p>`;
 
       // 老师端：显示正确率反馈（需求2）
       if (user.role === 'TEACHER' && v.correctRate != null && totalVotes > 0) {
@@ -272,8 +272,8 @@
           <div style="display:flex;justify-content:space-between;font-size:0.9rem">
             <span>${escHtml(opt.text)}${optIcon}</span>`;
 
-        // 学生未投票：完全隐藏票数
-        if (studentNotVoted) {
+        // 学生不显示票数和进度条，仅教师可见
+        if (isStudent) {
           html += `</div>`;
         } else {
           html += `<span>${opt.voteCount} 票 (${pct}%)</span></div>
@@ -282,11 +282,6 @@
 
         html += `</div>`;
       });
-
-      // 投票前显示提示（需求4）
-      if (user.role === 'STUDENT' && v.hasVoted === false && v.status === 'ACTIVE') {
-        html += '<p style="color:var(--text-light);font-size:0.85rem;margin-top:0.5rem">📌 投票后可查看其他人的答案统计</p>';
-      }
 
       // 学生投票区
       if (user.role === 'STUDENT' && v.status === 'ACTIVE') {
