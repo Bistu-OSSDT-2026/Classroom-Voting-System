@@ -290,6 +290,25 @@
         html += `</div>`;
       });
 
+      // 老师端：学生投票明细（可折叠，需求：教师查看投票分布）
+      if (user.role === 'TEACHER' && totalVotes > 0) {
+        html += `<hr style="margin:1rem 0">
+          <div style="cursor:pointer;font-weight:600;color:var(--primary);display:flex;align-items:center;gap:0.5rem"
+               onclick="toggleRecords(${sessionId}, this)">
+            <span id="records-arrow-${sessionId}">▶</span> 📋 学生投票明细 (${totalVotes}人)
+          </div>
+          <div id="records-table-${sessionId}" style="display:none;margin-top:0.5rem;overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
+              <thead><tr style="background:#f8fafc">
+                <th style="padding:0.5rem 0.75rem;text-align:left;border-bottom:2px solid var(--border)">学生姓名</th>
+                <th style="padding:0.5rem 0.75rem;text-align:left;border-bottom:2px solid var(--border)">所选选项</th>
+                <th style="padding:0.5rem 0.75rem;text-align:center;border-bottom:2px solid var(--border);width:80px">结果</th>
+              </tr></thead>
+              <tbody id="records-body-${sessionId}"><tr><td colspan="3" style="padding:1rem;text-align:center;color:var(--text-light)">加载中...</td></tr></tbody>
+            </table>
+          </div>`;
+      }
+
       // 投票前显示提示（需求4）
       if (user.role === 'STUDENT' && v.hasVoted === false && v.status === 'ACTIVE') {
         html += '<p style="color:var(--text-light);font-size:0.85rem;margin-top:0.5rem">📌 投票后可查看其他人的答案统计</p>';
@@ -346,6 +365,45 @@
 
   function closeModal() {
     document.getElementById('modal-overlay').classList.add('hidden');
+  }
+
+  async function toggleRecords(sessionId, headerEl) {
+    const tableDiv = document.getElementById('records-table-' + sessionId);
+    const arrow = document.getElementById('records-arrow-' + sessionId);
+    if (!tableDiv || !arrow) return;
+
+    // 切换展开/收起
+    if (tableDiv.style.display === 'none') {
+      tableDiv.style.display = 'block';
+      arrow.textContent = '▼';
+
+      // 加载明细数据
+      const tbody = document.getElementById('records-body-' + sessionId);
+      if (tbody && tbody.innerHTML.includes('加载中')) {
+        try {
+          const res = await API.getVoteRecords(sessionId, user.id);
+          const records = res.data || [];
+          if (records.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" style="padding:1rem;text-align:center;color:var(--text-light)">暂无投票记录</td></tr>';
+          } else {
+            tbody.innerHTML = records.map(r => `
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:0.5rem 0.75rem">${escHtml(r.studentName)}</td>
+                <td style="padding:0.5rem 0.75rem">${escHtml(r.optionText)}</td>
+                <td style="padding:0.5rem 0.75rem;text-align:center">
+                  ${r.isCorrect ? '<span style="color:var(--success);font-weight:600">✅ 正确</span>' : '<span style="color:var(--danger);font-weight:600">❌ 错误</span>'}
+                </td>
+              </tr>
+            `).join('');
+          }
+        } catch (err) {
+          tbody.innerHTML = '<tr><td colspan="3" style="padding:1rem;text-align:center;color:var(--danger)">加载失败: ' + escHtml(err.message) + '</td></tr>';
+        }
+      }
+    } else {
+      tableDiv.style.display = 'none';
+      arrow.textContent = '▶';
+    }
   }
 
   loadAll();

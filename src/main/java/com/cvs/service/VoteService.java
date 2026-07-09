@@ -2,6 +2,7 @@ package com.cvs.service;
 
 import com.cvs.dto.CastVoteResultVO;
 import com.cvs.dto.CreateVoteRequest;
+import com.cvs.dto.VoteRecordVO;
 import com.cvs.dto.VoteSessionVO;
 import com.cvs.model.*;
 import com.cvs.repository.*;
@@ -197,6 +198,30 @@ public class VoteService {
 
             VoteSessionVO vo = VoteSessionVO.fromVoteSession(s, options, records.size());
             vo.setCorrectRate(correctRate);
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    /**
+     * 获取投票的学生投票明细（仅教师可查看）
+     */
+    public List<VoteRecordVO> getVoteRecords(Long sessionId, User teacher) {
+        VoteSession session = voteSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("投票不存在"));
+
+        if (!session.getTeacher().getId().equals(teacher.getId())) {
+            throw new RuntimeException("无权查看投票明细");
+        }
+
+        List<VoteRecord> records = voteRecordRepository.findByVoteSession(session);
+
+        return records.stream().map(r -> {
+            VoteRecordVO vo = new VoteRecordVO();
+            vo.setStudentId(r.getStudent().getId());
+            vo.setStudentName(r.getStudent().getRealName());
+            vo.setOptionId(r.getOption().getId());
+            vo.setOptionText(r.getOption().getText());
+            vo.setIsCorrect(r.getOption().getIsCorrect());
             return vo;
         }).collect(Collectors.toList());
     }

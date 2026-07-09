@@ -32,19 +32,19 @@
   <!-- 知识点掌握度 -->
   <div class="card">
     <h3>📊 各知识点掌握度</h3>
-    <div class="chart-container">
+    <div class="chart-container" style="height:280px">
       <canvas id="kp-chart"></canvas>
     </div>
-    <div id="kp-table"></div>
+    <div id="kp-table" class="mastery-table"></div>
   </div>
 
   <!-- 学生掌握度 -->
   <div class="card">
     <h3>👨‍🎓 学生掌握度排名</h3>
-    <div class="chart-container">
+    <div class="chart-container" style="height:280px">
       <canvas id="student-chart"></canvas>
     </div>
-    <div id="student-table"></div>
+    <div id="student-table" class="mastery-table"></div>
   </div>
 </div>
 
@@ -73,11 +73,27 @@
       const ovRes = await API.getOverview(courseId);
       const ov = ovRes.data;
       document.getElementById('overview-content').innerHTML = `
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;text-align:center">
-          <div><div style="font-size:2rem;font-weight:700;color:var(--primary)">${ov.totalKnowledgePoints}</div><div style="color:var(--text-light);font-size:0.85rem">知识点</div></div>
-          <div><div style="font-size:2rem;font-weight:700;color:var(--primary)">${ov.totalVoteSessions}</div><div style="color:var(--text-light);font-size:0.85rem">投票次数</div></div>
-          <div><div style="font-size:2rem;font-weight:700;color:var(--primary)">${ov.totalStudents}</div><div style="color:var(--text-light);font-size:0.85rem">学生人数</div></div>
-          <div><div style="font-size:2rem;font-weight:700;color:${ov.overallMastery >= 60 ? 'var(--success)' : 'var(--danger)'}">${ov.overallMastery}%</div><div style="color:var(--text-light);font-size:0.85rem">总体掌握度</div></div>
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#eef2ff">📚</div>
+            <div class="stat-value">${ov.totalKnowledgePoints}</div>
+            <div class="stat-label">知识点</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#fef3c7">📋</div>
+            <div class="stat-value">${ov.totalVoteSessions}</div>
+            <div class="stat-label">投票次数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#dbeafe">👨‍🎓</div>
+            <div class="stat-value">${ov.totalStudents}</div>
+            <div class="stat-label">学生人数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:${ov.overallMastery >= 60 ? '#dcfce7' : '#fee2e2'}">📊</div>
+            <div class="stat-value" style="color:${ov.overallMastery >= 60 ? 'var(--success)' : 'var(--danger)'}">${ov.overallMastery}%</div>
+            <div class="stat-label">总体掌握度</div>
+          </div>
         </div>
       `;
 

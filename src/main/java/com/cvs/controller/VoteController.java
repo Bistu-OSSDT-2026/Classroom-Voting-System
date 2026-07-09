@@ -100,4 +100,20 @@ public class VoteController {
             return ApiResponse.error(400, e.getMessage());
         }
     }
+
+    /**
+     * 获取投票的学生投票明细（仅教师可查看）
+     */
+    @GetMapping("/{sessionId}/records")
+    public ApiResponse<List<VoteRecordVO>> getVoteRecords(
+            @PathVariable Long sessionId,
+            @RequestParam Long teacherId) {
+        try {
+            User teacher = userService.findById(teacherId);
+            List<VoteRecordVO> records = voteService.getVoteRecords(sessionId, teacher);
+            return ApiResponse.success(records);
+        } catch (RuntimeException e) {
+            return ApiResponse.error(400, e.getMessage());
+        }
+    }
 }
