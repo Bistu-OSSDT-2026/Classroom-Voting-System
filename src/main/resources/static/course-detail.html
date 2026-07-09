@@ -15,7 +15,7 @@
 
 <div class="nav-tabs">
   <a href="/courses.html">课程列表</a>
-  <a href="javascript:void(0)" onclick="goStats()">数据统计</a>
+  <a href="javascript:void(0)" id="nav-stats" onclick="goStats()">数据统计</a>
 </div>
 
 <div class="container">
@@ -70,6 +70,11 @@
   document.getElementById('user-info').textContent =
     `${user.realName} (${user.role === 'TEACHER' ? '教师' : '学生'}) | ID: ${user.id}`;
 
+  // 学生隐藏数据统计入口
+  if (user.role !== 'TEACHER') {
+    document.getElementById('nav-stats').style.display = 'none';
+  }
+
   function logout() { sessionStorage.clear(); window.location.href = '/login.html'; }
   function goStats() { window.location.href = '/statistics.html'; }
   function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
@@ -111,7 +116,7 @@
               <strong>${escHtml(v.title)}</strong>
               <div style="font-size:0.8rem">
                 <span class="badge ${v.status==='ACTIVE'?'badge-active':'badge-closed'}">${v.status==='ACTIVE'?'进行中':'已关闭'}</span>
-                知识点: ${escHtml(v.knowledgePointName)} | ${v.totalVotes} 人已投
+                知识点: ${escHtml(v.knowledgePointName)}${user.role==='TEACHER' ? ' | '+v.totalVotes+' 人已投' : ''}
               </div>
             </div>
             <div style="display:flex;gap:0.3rem">
@@ -199,43 +204,106 @@
     } catch (err) { alert(err.message); }
   }
 
-  async function viewVote(sessionId) {
+  async function viewVote(sessionId, voteResult) {
     try {
-      const res = await API.getVoteDetail(sessionId);
+      // 学生传入自己的ID，用于判断是否已投票
+      const studentId = user.role === 'STUDENT' ? user.id : undefined;
+      const res = await API.getVoteDetail(sessionId, studentId);
       const v = res.data;
       const card = document.getElementById('vote-detail-card');
       card.style.display = 'block';
       document.getElementById('vote-detail-title').textContent = '📋 ' + v.title;
 
       const totalVotes = v.totalVotes;
+      const isStudent = (user.role === 'STUDENT');
       let html = `<p style="color:var(--text-light);margin-bottom:0.5rem">
         状态: <span class="badge ${v.status==='ACTIVE'?'badge-active':'badge-closed'}">${v.status==='ACTIVE'?'进行中':'已关闭'}</span>
-        | 总票数: ${totalVotes}</p>`;
+        ${isStudent ? '' : ' | 总票数: ' + totalVotes}</p>`;
 
+      // 老师端：显示正确率反馈（需求2）
+      if (user.role === 'TEACHER' && v.correctRate != null && totalVotes > 0) {
+        let suggestion = '';
+        let suggestionColor = '';
+        if (v.correctRate < 60) {
+          suggestion = '⚠️ 正确率较低（' + v.correctRate + '%），建议重新讲解该知识点';
+          suggestionColor = 'var(--danger)';
+        } else if (v.correctRate < 80) {
+          suggestion = '📝 正确率中等（' + v.correctRate + '%），可适当补充讲解';
+          suggestionColor = 'var(--warning)';
+        } else {
+          suggestion = '✅ 正确率良好（' + v.correctRate + '%），可以继续推进';
+          suggestionColor = 'var(--success)';
+        }
+        html += `<div class="feedback-banner" style="background:${suggestionColor};color:#fff;padding:0.6rem 1rem;border-radius:8px;margin-bottom:0.75rem;font-weight:500;font-size:0.9rem">${suggestion}</div>`;
+      }
+
+      // 选项显示
       v.options.forEach(opt => {
+        // 判断该选项的颜色状态（需求1：投票后反馈）
+        let optClass = '';
+        let optIcon = '';
+        if (voteResult) {
+          // 刚投完票，用 voteResult 判断
+          if (opt.id === voteResult.correctOptionId) {
+            optClass = 'option-correct';
+            optIcon = ' ✅';
+          } else if (opt.id === voteResult.chosenOptionId && !voteResult.correct) {
+            optClass = 'option-wrong';
+            optIcon = ' ❌';
+          }
+        } else if (user.role === 'STUDENT' && v.hasVoted && opt.isCorrect != null) {
+          // 学生已投票，查看历史：标记正确答案和学生所选
+          if (opt.isCorrect) {
+            optClass = 'option-correct';
+            optIcon = ' ✅';
+          } else if (opt.id === v.studentVoteOptionId) {
+            optClass = 'option-wrong';
+            optIcon = ' ❌';
+          }
+        } else if (user.role === 'TEACHER' && opt.isCorrect != null) {
+          // 老师始终能看到正确答案标记
+          if (opt.isCorrect) {
+            optIcon = ' ✅';
+          }
+        }
+
         const pct = totalVotes > 0 ? Math.round(opt.voteCount / totalVotes * 100) : 0;
-        html += `<div style="margin-bottom:0.5rem">
+        html += `<div class="${optClass}" style="margin-bottom:0.5rem;padding:0.5rem;border-radius:8px;border:2px solid ${optClass ? (optClass === 'option-correct' ? 'var(--success)' : 'var(--danger)') : 'var(--border)'}">
           <div style="display:flex;justify-content:space-between;font-size:0.9rem">
-            <span>${escHtml(opt.text)}</span><span>${opt.voteCount} 票 (${pct}%)</span>
-          </div>
-          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-        </div>`;
+            <span>${escHtml(opt.text)}${optIcon}</span>`;
+
+        // 学生不显示票数和进度条，仅教师可见
+        if (isStudent) {
+          html += `</div>`;
+        } else {
+          html += `<span>${opt.voteCount} 票 (${pct}%)</span></div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`;
+        }
+
+        html += `</div>`;
       });
 
+      // 学生投票区
       if (user.role === 'STUDENT' && v.status === 'ACTIVE') {
         html += '<hr style="margin:1rem 0">';
-        html += '<p style="font-weight:600;margin-bottom:0.5rem">请选择你的答案：</p>';
-        v.options.forEach(opt => {
-          html += `<div class="option-card" onclick="selectOption(this, ${opt.id})">
-            <span class="option-radio"></span>
-            <span>${escHtml(opt.text)}</span>
-          </div>`;
-        });
-        html += `<button class="btn btn-success btn-sm" style="margin-top:0.5rem" id="btn-submit-vote" disabled onclick="submitVote(${sessionId})">提交投票</button>`;
+        if (v.hasVoted) {
+          html += '<p style="color:var(--success);font-weight:600">✅ 你已完成投票</p>';
+        } else {
+          html += '<p style="font-weight:600;margin-bottom:0.5rem">请选择你的答案：</p>';
+          v.options.forEach(opt => {
+            html += `<div class="option-card" onclick="selectOption(this, ${opt.id})">
+              <span class="option-radio"></span>
+              <span>${escHtml(opt.text)}</span>
+            </div>`;
+          });
+          html += `<button class="btn btn-success btn-sm" style="margin-top:0.5rem" id="btn-submit-vote" disabled onclick="submitVote(${sessionId})">提交投票</button>`;
+        }
       }
 
       document.getElementById('vote-detail-content').innerHTML = html;
       window._selectedOptionId = null;
+      // 滚动到详情区
+      card.scrollIntoView({ behavior: 'smooth' });
     } catch (err) { alert(err.message); }
   }
 
@@ -249,9 +317,9 @@
   async function submitVote(sessionId) {
     if (!window._selectedOptionId) return;
     try {
-      await API.castVote(sessionId, user.id, window._selectedOptionId);
-      alert('投票成功！');
-      viewVote(sessionId);
+      const res = await API.castVote(sessionId, user.id, window._selectedOptionId);
+      // 用返回的投票结果直接重新渲染，展示颜色反馈（需求1）
+      viewVote(sessionId, res.data);
       loadAll();
     } catch (err) { alert(err.message); }
   }

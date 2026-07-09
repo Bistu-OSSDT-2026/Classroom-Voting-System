@@ -15,7 +15,7 @@
 
 <div class="nav-tabs">
   <a href="/courses.html" class="active">课程列表</a>
-  <a href="javascript:void(0)" onclick="goStats()">数据统计</a>
+  <a href="javascript:void(0)" id="nav-stats" onclick="goStats()">数据统计</a>
 </div>
 
 <div class="container">
@@ -35,6 +35,11 @@
 
   document.getElementById('user-info').textContent =
     `${user.realName} (${user.role === 'TEACHER' ? '教师' : '学生'}) | ID: ${user.id}`;
+
+  // 学生隐藏数据统计入口
+  if (user.role !== 'TEACHER') {
+    document.getElementById('nav-stats').style.display = 'none';
+  }
 
   function logout() { sessionStorage.clear(); window.location.href = '/login.html'; }
 
@@ -66,13 +71,13 @@
       list.innerHTML = res.data.map(c => `
         <div class="list-item">
           <div>
-            <strong>${escHtml(c.name)}</strong>
-            <div style="font-size:0.85rem;color:var(--text-light)">
-              ${escHtml(c.description || '')} | 教师: ${escHtml(c.teacherName)}
+            <strong>📚 ${escHtml(c.name)}</strong>
+            <div style="font-size:0.8rem;color:var(--text-light)">
+              👨‍🏫 ${escHtml(c.teacherName)} &nbsp;|&nbsp; ${escHtml(c.description || '暂无描述')}
             </div>
           </div>
           <div style="display:flex;gap:0.5rem">
-            <button class="btn btn-outline btn-sm" onclick="goDetail(${c.id})">进入</button>
+            <button class="btn btn-outline btn-sm" onclick="goDetail(${c.id})">进入课程</button>
             ${user.role === 'TEACHER' && c.teacherId === user.id ? 
               `<button class="btn btn-danger btn-sm" onclick="deleteCourse(${c.id})">删除</button>` : ''}
           </div>
