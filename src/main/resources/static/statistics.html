@@ -55,6 +55,11 @@
   if (!user) { window.location.href = '/login.html'; }
   if (!courseId) { window.location.href = '/courses.html'; }
 
+  // 学生无权访问数据统计，重定向回课程详情
+  if (user.role !== 'TEACHER') {
+    window.location.href = '/course-detail.html';
+  }
+
   document.getElementById('user-info').textContent =
     `${user.realName} (${user.role === 'TEACHER' ? '教师' : '学生'}) | ID: ${user.id}`;
   function logout() { sessionStorage.clear(); window.location.href = '/login.html'; }

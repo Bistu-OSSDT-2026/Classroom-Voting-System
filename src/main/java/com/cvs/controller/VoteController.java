@@ -39,12 +39,14 @@ public class VoteController {
     }
 
     /**
-     * 获取投票详情
+     * 获取投票详情（可选传入 studentId 判断学生是否已投票）
      */
     @GetMapping("/{sessionId}")
-    public ApiResponse<VoteSessionVO> getVoteDetail(@PathVariable Long sessionId) {
+    public ApiResponse<VoteSessionVO> getVoteDetail(
+            @PathVariable Long sessionId,
+            @RequestParam(required = false) Long studentId) {
         try {
-            VoteSessionVO vo = voteService.getVoteDetail(sessionId);
+            VoteSessionVO vo = voteService.getVoteDetail(sessionId, studentId);
             return ApiResponse.success(vo);
         } catch (RuntimeException e) {
             return ApiResponse.error(400, e.getMessage());
@@ -52,10 +54,10 @@ public class VoteController {
     }
 
     /**
-     * 提交投票（学生）
+     * 提交投票（学生），返回投票结果（是否正确、正确答案）
      */
     @PostMapping("/{sessionId}/vote")
-    public ApiResponse<Void> castVote(
+    public ApiResponse<CastVoteResultVO> castVote(
             @PathVariable Long sessionId,
             @RequestBody Map<String, Long> body) {
         try {
@@ -63,8 +65,8 @@ public class VoteController {
             Long optionId = body.get("optionId");
 
             User student = userService.findById(studentId);
-            voteService.castVote(sessionId, optionId, student);
-            return ApiResponse.success("投票成功", null);
+            CastVoteResultVO result = voteService.castVote(sessionId, optionId, student);
+            return ApiResponse.success(result.isCorrect() ? "回答正确！" : "回答错误", result);
         } catch (RuntimeException e) {
             return ApiResponse.error(400, e.getMessage());
         }

@@ -39,7 +39,8 @@ const API = {
   // 投票
   createVote: (body, teacherId) =>
     request(`/vote-sessions?teacherId=${teacherId}`, { method: 'POST', body: JSON.stringify(body) }),
-  getVoteDetail: (sessionId) => request(`/vote-sessions/${sessionId}`),
+	getVoteDetail: (sessionId, studentId) =>
+	  request(`/vote-sessions/${sessionId}${studentId ? '?studentId=' + studentId : ''}`),
   castVote: (sessionId, studentId, optionId) =>
     request(`/vote-sessions/${sessionId}/vote`, { method: 'POST', body: JSON.stringify({ studentId, optionId }) }),
   closeVote: (sessionId, teacherId) =>
