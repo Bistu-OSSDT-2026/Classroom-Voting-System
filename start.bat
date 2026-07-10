@@ -8,11 +8,22 @@ echo    CVS - Classroom Vote System
 echo  ============================================
 echo.
 
-:: Find JDK
-call :find_jdk
-if errorlevel 1 goto :no_jdk
+:: Ask user for JDK path
+echo.
+echo  Please enter your JDK 21 path, e.g.:
+echo    C:\Program Files\Java\jdk-21
+echo.
+set /p JAVA_HOME="JDK path: "
 
-:run
+if not exist "!JAVA_HOME!\bin\javac.exe" (
+    echo.
+    echo  Invalid JDK path (javac.exe not found).
+    echo  Download Oracle JDK 21:
+    echo  https://www.oracle.com/java/technologies/downloads/#jdk21-windows
+    pause
+    exit /b 1
+)
+
 if not exist "target\cvs-app.jar" (
     echo.
     echo  No build found. Run build.bat first.
@@ -37,56 +48,6 @@ echo  Press Ctrl+C to stop
 echo  ============================================
 echo.
 
-if defined JAVA_HOME set "PATH=%JAVA_HOME%\bin;%PATH%"
+set "PATH=!JAVA_HOME!\bin;%PATH%"
 java -jar target\cvs-app.jar
 pause
-exit /b 0
-
-:no_jdk
-echo.
-echo  ============================================
-echo   JDK 21+ not found! (need javac, not JRE)
-echo  ============================================
-echo.
-echo  Enter your JDK path, e.g.:
-echo    C:\Program Files\Java\jdk-21
-echo.
-set /p USER_PATH="JDK path: "
-
-if exist "!USER_PATH!\bin\javac.exe" (
-    set "JAVA_HOME=!USER_PATH!"
-    goto :run
-)
-if exist "!USER_PATH!\javac.exe" (
-    set "JAVA_HOME=!USER_PATH!"
-    goto :run
-)
-
-echo.
-echo  Invalid path. Download Oracle JDK 21:
-echo  https://www.oracle.com/java/technologies/downloads/#jdk21-windows
-pause
-exit /b 1
-
-:find_jdk
-:: 1) Check JAVA_HOME env var
-if defined JAVA_HOME (
-    if exist "!JAVA_HOME!\bin\javac.exe" exit /b 0
-)
-:: 2) Search PATH for javac
-for %%i in (javac.exe) do set "JAVAC_PATH=%%~$PATH:i"
-if defined JAVAC_PATH (
-    set "JAVA_HOME=!JAVAC_PATH:\bin\javac.exe=!"
-    exit /b 0
-)
-:: 3) Search common install paths
-for /d %%d in (
-    "C:\Program Files\Java\jdk-21*"
-    "C:\Program Files (x86)\Java\jdk-21*"
-) do (
-    if exist "%%d\bin\javac.exe" (
-        set "JAVA_HOME=%%d"
-        exit /b 0
-    )
-)
-exit /b 1

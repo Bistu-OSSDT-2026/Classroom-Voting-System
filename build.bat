@@ -5,13 +5,23 @@ title CVS Build
 echo.
 echo  Building CVS...
 
-:: Find JDK (must have javac)
-call :find_jdk
-if errorlevel 1 goto :no_jdk
+:: Ask user for JDK path
+echo.
+echo  Please enter your JDK 21 path, e.g.:
+echo    C:\Program Files\Java\jdk-21
+echo.
+set /p JAVA_HOME="JDK path: "
 
-:build
-:: Ensure Maven uses the JDK we found
-if defined JAVA_HOME set "PATH=%JAVA_HOME%\bin;%PATH%"
+if not exist "!JAVA_HOME!\bin\javac.exe" (
+    echo.
+    echo  Invalid JDK path (javac.exe not found).
+    echo  Download Oracle JDK 21:
+    echo  https://www.oracle.com/java/technologies/downloads/#jdk21-windows
+    pause
+    exit /b 1
+)
+
+set "PATH=!JAVA_HOME!\bin;%PATH%"
 call mvnw.cmd package -DskipTests -q
 if %errorlevel% equ 0 (
     echo.
@@ -21,53 +31,3 @@ if %errorlevel% equ 0 (
     echo  Build FAILED.
 )
 pause
-exit /b 0
-
-:no_jdk
-echo.
-echo  ============================================
-echo   JDK 21+ not found! (need javac, not JRE)
-echo  ============================================
-echo.
-echo  Enter your JDK path, e.g.:
-echo    C:\Program Files\Java\jdk-21
-echo.
-set /p USER_PATH="JDK path: "
-
-if exist "!USER_PATH!\bin\javac.exe" (
-    set "JAVA_HOME=!USER_PATH!"
-    goto :build
-)
-if exist "!USER_PATH!\javac.exe" (
-    set "JAVA_HOME=!USER_PATH!"
-    goto :build
-)
-
-echo.
-echo  Invalid path. Download Oracle JDK 21:
-echo  https://www.oracle.com/java/technologies/downloads/#jdk21-windows
-pause
-exit /b 1
-
-:find_jdk
-:: 1) Check JAVA_HOME env var
-if defined JAVA_HOME (
-    if exist "!JAVA_HOME!\bin\javac.exe" exit /b 0
-)
-:: 2) Search PATH for javac
-for %%i in (javac.exe) do set "JAVAC_PATH=%%~$PATH:i"
-if defined JAVAC_PATH (
-    set "JAVA_HOME=!JAVAC_PATH:\bin\javac.exe=!"
-    exit /b 0
-)
-:: 3) Search common install paths
-for /d %%d in (
-    "C:\Program Files\Java\jdk-21*"
-    "C:\Program Files (x86)\Java\jdk-21*"
-) do (
-    if exist "%%d\bin\javac.exe" (
-        set "JAVA_HOME=%%d"
-        exit /b 0
-    )
-)
-exit /b 1
