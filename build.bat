@@ -50,18 +50,17 @@ pause
 exit /b 1
 
 :find_jdk
+:: 1) Check JAVA_HOME env var
 if defined JAVA_HOME (
     if exist "!JAVA_HOME!\bin\javac.exe" exit /b 0
 )
-where javac >nul 2>&1
-if %errorlevel% equ 0 (
-    for /f "delims=" %%i in ('where javac') do (
-        pushd "%%~dpi.."
-        set "JAVA_HOME=!CD!"
-        popd
-        exit /b 0
-    )
+:: 2) Search PATH for javac
+for %%i in (javac.exe) do set "JAVAC_PATH=%%~$PATH:i"
+if defined JAVAC_PATH (
+    set "JAVA_HOME=!JAVAC_PATH:\bin\javac.exe=!"
+    exit /b 0
 )
+:: 3) Search common install paths
 for /d %%d in (
     "C:\Program Files\Java\jdk-21*"
     "C:\Program Files (x86)\Java\jdk-21*"
