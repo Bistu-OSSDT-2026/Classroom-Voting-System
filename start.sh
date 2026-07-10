@@ -28,8 +28,29 @@ find_java() {
 JAVA_CMD=$(find_java)
 
 if [ -z "$JAVA_CMD" ]; then
-  echo "❌ 未找到 Java，请先安装 Oracle JDK 21"
-  echo "下载: https://www.oracle.com/java/technologies/downloads/#jdk21"
+  echo ""
+  echo "╔══════════════════════════════════════╗"
+  echo "║  Java not found in common locations! ║"
+  echo "╚══════════════════════════════════════╝"
+  echo ""
+  echo "Please enter your JDK path, e.g.:"
+  echo "  /usr/lib/jvm/jdk-21-oracle"
+  echo "  /Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home"
+  echo ""
+  read -r -p "JDK path: " USER_PATH
+
+  if [ -x "$USER_PATH/bin/java" ]; then
+    JAVA_CMD="$USER_PATH/bin/java"
+  elif [ -x "$USER_PATH/java" ]; then
+    JAVA_CMD="$USER_PATH/java"
+  elif [ -x "$USER_PATH" ] && echo "$USER_PATH" | grep -q "java"; then
+    JAVA_CMD="$USER_PATH"
+  fi
+fi
+
+if [ -z "$JAVA_CMD" ]; then
+  echo "❌ Invalid path. Install Oracle JDK 21:"
+  echo "https://www.oracle.com/java/technologies/downloads/#jdk21"
   exit 1
 fi
 

@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 title CVS Server
 
 echo.
@@ -36,8 +37,38 @@ for /d %%d in (
     )
 )
 
-:: 找不到 Java
-echo  Java not found! Please install Oracle JDK 21:
+:: 找不到 Java，让用户手动输入
+echo.
+echo  ============================================
+echo   Java not found in common locations!
+echo  ============================================
+echo.
+echo  Please enter your JDK path, e.g.:
+echo    C:\Program Files\Java\jdk-21
+echo.
+set /p USER_PATH="JDK path: "
+
+:: 尝试多种路径组合
+if exist "!USER_PATH!\bin\java.exe" (
+    set "JAVA_CMD=!USER_PATH!\bin\java.exe"
+    set "JAVA_HOME=!USER_PATH!"
+    goto :found_java
+)
+if exist "!USER_PATH!\java.exe" (
+    set "JAVA_CMD=!USER_PATH!\java.exe"
+    goto :found_java
+)
+if exist "!USER_PATH!" (
+    :: 用户可能输入了完整的 java.exe 路径
+    echo !USER_PATH! | findstr /i "java.exe" >nul
+    if !errorlevel! equ 0 (
+        set "JAVA_CMD=!USER_PATH!"
+        goto :found_java
+    )
+)
+
+echo.
+echo  Invalid path. Make sure Oracle JDK 21 is installed:
 echo  https://www.oracle.com/java/technologies/downloads/#jdk21-windows
 pause
 exit /b 1
