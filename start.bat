@@ -24,14 +24,10 @@ if %errorlevel% equ 0 (
     goto :found_java
 )
 
-:: 3) 搜索常见 JDK 安装路径
+:: 3) 搜索 Oracle JDK 21 安装路径
 for /d %%d in (
     "C:\Program Files\Java\jdk-21*"
-    "C:\Program Files\Java\jdk-22*"
-    "C:\Program Files\Java\jdk-23*"
-    "C:\Program Files\Eclipse Adoptium\jdk-21*"
-    "C:\Program Files\Eclipse Adoptium\jdk-22*"
-    "C:\Program Files\Microsoft\jdk-21*"
+    "C:\Program Files (x86)\Java\jdk-21*"
 ) do (
     if exist "%%d\bin\java.exe" (
         set "JAVA_CMD=%%d\bin\java.exe"
@@ -41,8 +37,8 @@ for /d %%d in (
 )
 
 :: 找不到 Java
-echo  Java not found! Please install JDK 21:
-echo  https://adoptium.net/download/
+echo  Java not found! Please install Oracle JDK 21:
+echo  https://www.oracle.com/java/technologies/downloads/#jdk21-windows
 pause
 exit /b 1
 

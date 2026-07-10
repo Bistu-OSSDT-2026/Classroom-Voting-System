@@ -12,7 +12,7 @@ if %errorlevel% equ 0 (
     echo  Build success! Now double-click start.bat
 ) else (
     echo.
-    echo  Build FAILED. Make sure JDK 21+ is installed.
-    echo  Download: https://adoptium.net/download/
+    echo  Build FAILED. Make sure Oracle JDK 21+ is installed.
+    echo  Download: https://www.oracle.com/java/technologies/downloads/#jdk21-windows
 )
 pause

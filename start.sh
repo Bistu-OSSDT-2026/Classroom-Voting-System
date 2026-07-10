@@ -15,8 +15,8 @@ find_java() {
     echo "java"
     return
   fi
-  # 3) 常见路径
-  for dir in /usr/lib/jvm/java-21-* /usr/lib/jvm/jdk-21* /usr/local/opt/openjdk@21/bin; do
+  # 3) Oracle JDK 21 常见路径
+  for dir in /usr/lib/jvm/jdk-21-oracle* /usr/lib/jvm/jdk-21* /usr/java/jdk-21*; do
     if [ -x "$dir/bin/java" ]; then
       echo "$dir/bin/java"
       return
@@ -28,8 +28,8 @@ find_java() {
 JAVA_CMD=$(find_java)
 
 if [ -z "$JAVA_CMD" ]; then
-  echo "❌ 未找到 Java，请先安装 JDK 21"
-  echo "下载: https://adoptium.net/download/"
+  echo "❌ 未找到 Java，请先安装 Oracle JDK 21"
+  echo "下载: https://www.oracle.com/java/technologies/downloads/#jdk21"
   exit 1
 fi
 
