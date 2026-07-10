@@ -130,11 +130,13 @@
               <strong>${escHtml(v.title)}</strong>
               <div style="font-size:0.8rem">
                 <span class="badge ${v.status==='ACTIVE'?'badge-active':'badge-closed'}">${v.status==='ACTIVE'?'进行中':'已关闭'}</span>
-                知识点: ${escHtml(v.knowledgePointName)}${user.role==='TEACHER' ? ' | '+v.totalVotes+' 人已投' : ''}
+	                ${v.anonymous ? '<span class="badge" style="background:#6b7280;color:#fff">🔒 匿名</span>' : '<span class="badge" style="background:#3b82f6;color:#fff">👤 实名</span>'}
+	                知识点: ${escHtml(v.knowledgePointName)}${user.role==='TEACHER' ? ' | '+v.totalVotes+' 人已投' : ''}
               </div>
             </div>
             <div style="display:flex;gap:0.3rem">
               <button class="btn btn-outline btn-sm" onclick="viewVote(${v.id})">查看</button>
+              ${user.role==='TEACHER' ? `<button class="btn btn-outline btn-sm" onclick="showVoteStudents(${v.id})">学生</button>` : ''}
               ${user.role==='TEACHER' && v.status==='ACTIVE' ? `<button class="btn btn-warning btn-sm" onclick="closeVote(${v.id})" style="background:var(--warning);color:#fff">关闭</button>` : ''}
             </div>
           </div>
@@ -191,6 +193,12 @@
           <textarea id="v-options" rows="4" placeholder="* 正确选项A&#10;错误选项B&#10;错误选项C"></textarea>
           <small style="color:var(--text-light)">以 * 开头表示正确答案</small>
         </div>
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+            <input type="checkbox" id="v-anonymous" style="width:16px;height:16px">
+            🔒 匿名投票（不显示学生用户名）
+          </label>
+        </div>
         <div style="display:flex;gap:0.5rem;justify-content:flex-end">
           <button class="btn btn-outline btn-sm" onclick="closeModal()">取消</button>
           <button class="btn btn-primary btn-sm" onclick="createVote()">发起</button>
@@ -212,7 +220,13 @@
     });
 
     try {
-      await API.createVote({ title, courseId, knowledgePointId, options }, user.id);
+      await API.createVote({
+        title,
+        courseId,
+        knowledgePointId,
+        options,
+        anonymous: document.getElementById('v-anonymous').checked
+      }, user.id);
       closeModal();
       loadAll();
     } catch (err) { alert(err.message); }
@@ -232,7 +246,8 @@
       const isStudent = (user.role === 'STUDENT');
       let html = `<p style="color:var(--text-light);margin-bottom:0.5rem">
         状态: <span class="badge ${v.status==='ACTIVE'?'badge-active':'badge-closed'}">${v.status==='ACTIVE'?'进行中':'已关闭'}</span>
-        ${isStudent ? '' : ' | 总票数: ' + totalVotes}</p>`;
+	        ${v.anonymous ? '<span class="badge" style="background:#6b7280;color:#fff">🔒 匿名投票</span>' : '<span class="badge" style="background:#3b82f6;color:#fff">👤 实名投票</span>'}
+	        ${isStudent ? '' : ' | 总票数: ' + totalVotes}</p>`;
 
       // 老师端：显示正确率反馈（需求2）
       if (user.role === 'TEACHER' && v.correctRate != null && totalVotes > 0) {
@@ -282,19 +297,26 @@
         }
 
         const pct = totalVotes > 0 ? Math.round(opt.voteCount / totalVotes * 100) : 0;
-        html += `<div class="${optClass}" style="margin-bottom:0.5rem;padding:0.5rem;border-radius:8px;border:2px solid ${optClass ? (optClass === 'option-correct' ? 'var(--success)' : 'var(--danger)') : 'var(--border)'}">
-          <div style="display:flex;justify-content:space-between;font-size:0.9rem">
-            <span>${escHtml(opt.text)}${optIcon}</span>`;
+	        html += `<div class="${optClass}" style="margin-bottom:0.5rem;padding:0.5rem;border-radius:8px;border:2px solid ${optClass ? (optClass === 'option-correct' ? 'var(--success)' : 'var(--danger)') : 'var(--border)'}">
+	          <div style="display:flex;justify-content:space-between;font-size:0.9rem">
+	            <span>${escHtml(opt.text)}${optIcon}</span>`;
 
-        // 学生不显示票数和进度条，仅教师可见
-        if (isStudent) {
-          html += `</div>`;
-        } else {
-          html += `<span>${opt.voteCount} 票 (${pct}%)</span></div>
-          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`;
-        }
+	        // 学生不显示票数和进度条，仅教师可见
+	        if (isStudent) {
+	          html += `</div>`;
+	        } else {
+	          html += `<span>${opt.voteCount} 票 (${pct}%)</span></div>
+	          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`;
+	        }
 
-        html += `</div>`;
+	        // 实名投票时显示选了该选项的学生名单（教师可见）
+	        if (!v.anonymous && opt.students && opt.students.length > 0 && !isStudent) {
+	          html += `<div style="font-size:0.8rem;color:var(--text-light);margin-top:0.2rem">
+	            学生: ${opt.students.map(s => escHtml(s)).join('、')}
+	          </div>`;
+	        }
+
+	        html += `</div>`;
       });
 
       // 学生投票区
@@ -344,6 +366,69 @@
       await API.closeVote(sessionId, user.id);
       loadAll();
     } catch (err) { alert(err.message); }
+  }
+
+  async function showVoteStudents(sessionId) {
+    try {
+      const res = await API.getVoteStudents(sessionId);
+      const data = res.data;
+
+      let html = `
+        <h3>📋 投票参与情况</h3>
+        <div style="display:flex;gap:1rem;margin-bottom:1rem;font-size:0.9rem;color:var(--text-light)">
+          <span>总人数: <strong>${data.totalStudents}</strong></span>
+          <span style="color:var(--success)">已投票: <strong>${data.votedCount}</strong></span>
+          <span style="color:var(--danger)">未投票: <strong>${data.notVotedCount}</strong></span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+          <div>
+            <h4 style="color:var(--success);margin-bottom:0.5rem">✅ 已投票 (${data.votedCount})</h4>
+            <div style="max-height:300px;overflow-y:auto">`;
+
+      if (data.votedStudents.length === 0) {
+        html += '<p style="color:var(--text-light)">暂无</p>';
+      } else {
+        data.votedStudents.forEach(s => {
+          html += `<div class="list-item" style="padding:0.4rem 0.6rem">
+            <div>
+              <strong>${escHtml(s.username)}</strong>
+              <div style="font-size:0.8rem;color:var(--text-light)">${escHtml(s.selectedOption)}</div>
+            </div>
+          </div>`;
+        });
+      }
+
+      html += `</div></div><div>
+          <h4 style="color:var(--danger);margin-bottom:0.5rem">❌ 未投票 (${data.notVotedCount})</h4>
+          <div style="max-height:300px;overflow-y:auto">`;
+
+      if (data.notVotedStudents.length === 0) {
+        html += '<p style="color:var(--text-light)">暂无</p>';
+      } else {
+        data.notVotedStudents.forEach(s => {
+          html += `<div class="list-item" style="padding:0.4rem 0.6rem">
+            <div>
+              <strong>${escHtml(s.username)}</strong>
+              <div style="font-size:0.8rem;color:var(--text-light)">未投票</div>
+            </div>
+          </div>`;
+        });
+      }
+
+      html += `</div></div></div>`;
+
+      document.getElementById('modal-overlay').classList.remove('hidden');
+      document.getElementById('modal-content').innerHTML = `
+        <div style="min-width:600px">
+          ${html}
+          <div style="display:flex;justify-content:flex-end;margin-top:1rem">
+            <button class="btn btn-outline btn-sm" onclick="closeModal()">关闭</button>
+          </div>
+        </div>
+      `;
+    } catch (err) {
+      alert(err.message);
+    }
   }
 
   function closeModal() {

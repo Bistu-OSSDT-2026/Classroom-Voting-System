@@ -4,13 +4,13 @@ import com.cvs.dto.CastVoteResultVO;
 import com.cvs.dto.CreateVoteRequest;
 import com.cvs.dto.VoteRecordVO;
 import com.cvs.dto.VoteSessionVO;
+import com.cvs.dto.VoteStudentVO;
 import com.cvs.model.*;
 import com.cvs.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -46,7 +46,7 @@ public class VoteService {
             throw new RuntimeException("无权操作");
         }
 
-        VoteSession session = new VoteSession(request.getTitle(), course, kp, teacher);
+        VoteSession session = new VoteSession(request.getTitle(), course, kp, teacher, request.isAnonymous());
         session = voteSessionRepository.save(session);
 
         for (CreateVoteRequest.OptionItem item : request.getOptions()) {
@@ -74,10 +74,22 @@ public class VoteService {
         Map<Long, Long> optionVoteCount = records.stream()
                 .collect(Collectors.groupingBy(r -> r.getOption().getId(), Collectors.counting()));
 
+        // 实名投票时收集每个选项对应的学生用户名
+        Map<Long, List<String>> optionStudents = null;
+        if (!session.isAnonymous()) {
+            optionStudents = records.stream()
+                    .collect(Collectors.groupingBy(
+                            r -> r.getOption().getId(),
+                            Collectors.mapping(r -> r.getStudent().getUsername(), Collectors.toList())));
+        }
+
         VoteSessionVO vo = VoteSessionVO.fromVoteSession(session, options, records.size());
 
         for (VoteSessionVO.OptionVO optVO : vo.getOptions()) {
             optVO.setVoteCount(optionVoteCount.getOrDefault(optVO.getId(), 0L));
+            if (optionStudents != null) {
+                optVO.setStudents(optionStudents.getOrDefault(optVO.getId(), List.of()));
+            }
         }
 
         // 计算正确率
@@ -178,6 +190,49 @@ public class VoteService {
 
         session.setStatus(VoteSession.Status.CLOSED);
         voteSessionRepository.save(session);
+    }
+
+    /**
+     * 获取投票的学生参与情况（已投票/未投票）
+     */
+    public VoteStudentVO getVoteStudents(Long sessionId) {
+        VoteSession session = voteSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("投票不存在"));
+
+        // 获取课程下所有选课学生
+        List<User> allStudents = courseService.getCourseStudents(session.getCourse().getId());
+
+        // 获取该投票的所有投票记录（含学生和选项信息）
+        List<VoteRecord> records = voteRecordRepository.findByVoteSession(session);
+
+        // 已投票学生ID集合
+        Set<Long> votedStudentIds = records.stream()
+                .map(r -> r.getStudent().getId())
+                .collect(Collectors.toSet());
+
+        // 构建已投票学生列表（匿名时不显示选项文本）
+        boolean isAnonymous = session.isAnonymous();
+        List<VoteStudentVO.StudentInfo> votedList = records.stream()
+                .map(r -> VoteStudentVO.StudentInfo.voted(
+                        r.getStudent().getId(),
+                        r.getStudent().getRealName(),
+                        r.getStudent().getUsername(),
+                        isAnonymous ? "已投票" : r.getOption().getText()))
+                .collect(Collectors.toList());
+
+        // 构建未投票学生列表
+        List<VoteStudentVO.StudentInfo> notVotedList = allStudents.stream()
+                .filter(s -> !votedStudentIds.contains(s.getId()))
+                .map(s -> VoteStudentVO.StudentInfo.notVoted(s.getId(), s.getRealName(), s.getUsername()))
+                .collect(Collectors.toList());
+
+        VoteStudentVO vo = new VoteStudentVO();
+        vo.setTotalStudents(allStudents.size());
+        vo.setVotedCount(votedList.size());
+        vo.setNotVotedCount(notVotedList.size());
+        vo.setVotedStudents(votedList);
+        vo.setNotVotedStudents(notVotedList);
+        return vo;
     }
 
     /**
