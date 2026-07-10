@@ -16,6 +16,9 @@ public class VoteSessionVO {
     private boolean anonymous;
     private List<OptionVO> options;
     private int totalVotes;
+    private Double correctRate;         // 正确率（百分比）
+    private Boolean hasVoted;           // 当前学生是否已投票
+    private Long studentVoteOptionId;   // 学生投的选项ID
 
     public static VoteSessionVO fromVoteSession(VoteSession session, List<VoteOption> options, int totalVotes) {
         VoteSessionVO vo = new VoteSessionVO();
@@ -35,6 +38,7 @@ public class VoteSessionVO {
         private Long id;
         private String text;
         private long voteCount;
+        private Boolean isCorrect;       // 是否为正确答案（教师或已投票学生可见）
         /** 实名投票时显示选了该选项的学生用户名列表 */
         private List<String> students;
 
@@ -42,6 +46,7 @@ public class VoteSessionVO {
             OptionVO vo = new OptionVO();
             vo.setId(option.getId());
             vo.setText(option.getText());
+            vo.setIsCorrect(option.getIsCorrect());
             return vo;
         }
 
@@ -51,6 +56,8 @@ public class VoteSessionVO {
         public void setText(String text) { this.text = text; }
         public long getVoteCount() { return voteCount; }
         public void setVoteCount(long voteCount) { this.voteCount = voteCount; }
+        public Boolean getIsCorrect() { return isCorrect; }
+        public void setIsCorrect(Boolean isCorrect) { this.isCorrect = isCorrect; }
         public List<String> getStudents() { return students; }
         public void setStudents(List<String> students) { this.students = students; }
     }
@@ -73,4 +80,13 @@ public class VoteSessionVO {
     public void setOptions(List<OptionVO> options) { this.options = options; }
     public int getTotalVotes() { return totalVotes; }
     public void setTotalVotes(int totalVotes) { this.totalVotes = totalVotes; }
+
+    public Double getCorrectRate() { return correctRate; }
+    public void setCorrectRate(Double correctRate) { this.correctRate = correctRate; }
+
+    public Boolean getHasVoted() { return hasVoted; }
+    public void setHasVoted(Boolean hasVoted) { this.hasVoted = hasVoted; }
+
+    public Long getStudentVoteOptionId() { return studentVoteOptionId; }
+    public void setStudentVoteOptionId(Long studentVoteOptionId) { this.studentVoteOptionId = studentVoteOptionId; }
 }

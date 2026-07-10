@@ -39,12 +39,15 @@ const API = {
   // 投票
   createVote: (body, teacherId) =>
     request(`/vote-sessions?teacherId=${teacherId}`, { method: 'POST', body: JSON.stringify(body) }),
-  getVoteDetail: (sessionId) => request(`/vote-sessions/${sessionId}`),
+	getVoteDetail: (sessionId, studentId) =>
+	  request(`/vote-sessions/${sessionId}${studentId ? '?studentId=' + studentId : ''}`),
   castVote: (sessionId, studentId, optionId) =>
     request(`/vote-sessions/${sessionId}/vote`, { method: 'POST', body: JSON.stringify({ studentId, optionId }) }),
-  closeVote: (sessionId, teacherId) =>
-    request(`/vote-sessions/${sessionId}/close?teacherId=${teacherId}`, { method: 'PUT' }),
-  getCourseVotes: (courseId) => request(`/vote-sessions/by-course/${courseId}`),
+	closeVote: (sessionId, teacherId) =>
+	  request(`/vote-sessions/${sessionId}/close?teacherId=${teacherId}`, { method: 'PUT' }),
+	getCourseVotes: (courseId) => request(`/vote-sessions/by-course/${courseId}`),
+	getVoteRecords: (sessionId, teacherId) =>
+	  request(`/vote-sessions/${sessionId}/records?teacherId=${teacherId}`),
 
   // 投票学生情况
   getVoteStudents: (sessionId) => request(`/vote-sessions/${sessionId}/students`),
@@ -53,4 +56,13 @@ const API = {
   getOverview: (courseId) => request(`/statistics/courses/${courseId}/overview`),
   getKpMastery: (courseId) => request(`/statistics/courses/${courseId}/knowledge-points`),
   getStudentMastery: (courseId) => request(`/statistics/courses/${courseId}/students`),
+
+  // 课堂抢答
+  createQuiz: (body) => request('/quiz/create', { method: 'POST', body: JSON.stringify(body) }),
+  startQuiz: (id, teacherId) => request(`/quiz/start/${id}?teacherId=${teacherId}`, { method: 'POST' }),
+  grabQuiz: (body) => request('/quiz/grab', { method: 'POST', body: JSON.stringify(body) }),
+  submitQuiz: (body) => request('/quiz/submit', { method: 'POST', body: JSON.stringify(body) }),
+  getQuizStatus: (id) => request(`/quiz/status/${id}`),
+  getQuizRank: (id) => request(`/quiz/rank/${id}`),
+  getCourseQuizzes: (courseId) => request(`/quiz/by-course/${courseId}`),
 };
