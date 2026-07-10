@@ -73,7 +73,14 @@ if defined JAVA_HOME (
     if exist "!JAVA_HOME!\bin\javac.exe" exit /b 0
 )
 where javac >nul 2>&1
-if %errorlevel% equ 0 exit /b 0
+if %errorlevel% equ 0 (
+    for /f "delims=" %%i in ('where javac') do (
+        pushd "%%~dpi.."
+        set "JAVA_HOME=!CD!"
+        popd
+        exit /b 0
+    )
+)
 for /d %%d in (
     "C:\Program Files\Java\jdk-21*"
     "C:\Program Files (x86)\Java\jdk-21*"
