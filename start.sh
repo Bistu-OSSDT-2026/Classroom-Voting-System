@@ -3,12 +3,59 @@ set -e
 
 cd "$(dirname "$0")"
 
-# 检查 Java
-if ! java -version >/dev/null 2>&1; then
-  echo "❌ 未找到 Java，请先安装 JDK 21"
-  echo "下载: https://adoptium.net/download/"
+# 自动查找 Java
+find_java() {
+  # 1) JAVA_HOME
+  if [ -n "$JAVA_HOME" ] && [ -x "$JAVA_HOME/bin/java" ]; then
+    echo "$JAVA_HOME/bin/java"
+    return
+  fi
+  # 2) PATH
+  if command -v java &>/dev/null; then
+    echo "java"
+    return
+  fi
+  # 3) Oracle JDK 21 常见路径
+  for dir in /usr/lib/jvm/jdk-21-oracle* /usr/lib/jvm/jdk-21* /usr/java/jdk-21*; do
+    if [ -x "$dir/bin/java" ]; then
+      echo "$dir/bin/java"
+      return
+    fi
+  done
+  echo ""
+}
+
+JAVA_CMD=$(find_java)
+
+if [ -z "$JAVA_CMD" ]; then
+  echo ""
+  echo "╔══════════════════════════════════════╗"
+  echo "║  Java not found in common locations! ║"
+  echo "╚══════════════════════════════════════╝"
+  echo ""
+  echo "Please enter your JDK path, e.g.:"
+  echo "  /usr/lib/jvm/jdk-21-oracle"
+  echo "  /Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home"
+  echo ""
+  read -r -p "JDK path: " USER_PATH
+
+  if [ -x "$USER_PATH/bin/java" ]; then
+    JAVA_CMD="$USER_PATH/bin/java"
+  elif [ -x "$USER_PATH/java" ]; then
+    JAVA_CMD="$USER_PATH/java"
+  elif [ -x "$USER_PATH" ] && echo "$USER_PATH" | grep -q "java"; then
+    JAVA_CMD="$USER_PATH"
+  fi
+fi
+
+if [ -z "$JAVA_CMD" ]; then
+  echo "❌ Invalid path. Install Oracle JDK 21:"
+  echo "https://www.oracle.com/java/technologies/downloads/#jdk21"
   exit 1
 fi
+
+echo "✅ Java found: $JAVA_CMD"
+"$JAVA_CMD" -version 2>&1 | head -1
 
 # 首次构建
 if [ ! -f "target/cvs-app.jar" ]; then
@@ -28,4 +75,4 @@ echo "║  学生: student1 / 123456             ║"
 echo "╚══════════════════════════════════════╝"
 echo ""
 
-java -jar target/cvs-app.jar
+"$JAVA_CMD" -jar target/cvs-app.jar
