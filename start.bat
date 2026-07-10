@@ -8,7 +8,7 @@ echo    CVS - Classroom Vote System
 echo  ============================================
 echo.
 
-:: 查找 JDK
+:: Find JDK
 call :find_jdk
 if errorlevel 1 goto :no_jdk
 
@@ -68,7 +68,6 @@ echo  https://www.oracle.com/java/technologies/downloads/#jdk21-windows
 pause
 exit /b 1
 
-:: ===== 查找 JDK =====
 :find_jdk
 if defined JAVA_HOME (
     if exist "!JAVA_HOME!\bin\javac.exe" exit /b 0
