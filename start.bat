@@ -17,12 +17,17 @@ set /p JAVA_HOME="JDK path: "
 
 if not exist "!JAVA_HOME!\bin\javac.exe" (
     echo.
-    echo  Invalid JDK path (javac.exe not found).
+    echo  [ERROR] Invalid JDK path - javac.exe not found at:
+    echo    !JAVA_HOME!\bin\javac.exe
+    echo.
     echo  Download Oracle JDK 21:
     echo  https://www.oracle.com/java/technologies/downloads/#jdk21-windows
     pause
     exit /b 1
 )
+
+echo.
+echo  JDK path accepted: !JAVA_HOME!
 
 if not exist "target\cvs-app.jar" (
     echo.

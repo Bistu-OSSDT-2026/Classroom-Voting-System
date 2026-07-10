@@ -14,20 +14,31 @@ set /p JAVA_HOME="JDK path: "
 
 if not exist "!JAVA_HOME!\bin\javac.exe" (
     echo.
-    echo  Invalid JDK path (javac.exe not found).
+    echo  [ERROR] Invalid JDK path - javac.exe not found at:
+    echo    !JAVA_HOME!\bin\javac.exe
+    echo.
     echo  Download Oracle JDK 21:
     echo  https://www.oracle.com/java/technologies/downloads/#jdk21-windows
     pause
     exit /b 1
 )
 
+echo.
+echo  JDK path accepted: !JAVA_HOME!
+echo  Building...
+
 set "PATH=!JAVA_HOME!\bin;%PATH%"
+echo.
 call mvnw.cmd package -DskipTests -q
 if %errorlevel% equ 0 (
     echo.
-    echo  Build success! Now double-click start.bat
+    echo  ============================================
+    echo   Build success! Now double-click start.bat
+    echo  ============================================
 ) else (
     echo.
-    echo  Build FAILED.
+    echo  ============================================
+    echo   Build FAILED! Check the errors above.
+    echo  ============================================
 )
 pause
