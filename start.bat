@@ -8,45 +8,10 @@ echo    CVS - Classroom Vote System
 echo  ============================================
 echo.
 
-:: ===== JDK 查找 =====
+:: 查找 JDK
 call :find_jdk
-if errorlevel 1 (
-    echo.
-    echo  ============================================
-    echo   JDK 21+ not found!
-    echo  ============================================
-    echo.
-    choice /c YNM /m "[Y] Auto-download JDK  [N] Enter path manually  [M] Exit"
-    if errorlevel 3 exit /b 1
-    if errorlevel 2 goto :manual_path
-    if errorlevel 1 (
-        call :download_jdk
-        if errorlevel 1 goto :manual_path
-        goto :run
-    )
-)
+if errorlevel 1 goto :no_jdk
 
-:found_java
-:: JDK 已就绪
-goto :run
-
-:: ===== 手动输入路径 =====
-:manual_path
-echo.
-echo  Enter your JDK path, e.g.: C:\Program Files\Java\jdk-21
-set /p USER_PATH="JDK path: "
-if exist "!USER_PATH!\bin\javac.exe" (
-    set "JAVA_HOME=!USER_PATH!"
-    goto :run
-)
-if exist "!USER_PATH!\javac.exe" (
-    set "JAVA_HOME=!USER_PATH!"
-    goto :run
-)
-echo  Invalid JDK path (javac not found).
-exit /b 1
-
-:: ===== 启动应用 =====
 :run
 if not exist "target\cvs-app.jar" (
     echo.
@@ -55,7 +20,7 @@ if not exist "target\cvs-app.jar" (
     exit /b 1
 )
 
-:: Kill existing instance
+:: Kill existing instance on port 8080
 echo.
 echo  Checking port 8080...
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":8080.*LISTENING"') do (
@@ -77,23 +42,39 @@ java -jar target\cvs-app.jar
 pause
 exit /b 0
 
-:: ===== JDK 查找函数 =====
-:find_jdk
-set "JAVA_HOME_FOUND="
+:no_jdk
+echo.
+echo  ============================================
+echo   JDK 21+ not found! (need javac, not JRE)
+echo  ============================================
+echo.
+echo  Enter your JDK path, e.g.:
+echo    C:\Program Files\Java\jdk-21
+echo.
+set /p USER_PATH="JDK path: "
 
-:: 1) 系统 JAVA_HOME
-if defined JAVA_HOME (
-    if exist "!JAVA_HOME!\bin\javac.exe" (
-        set "JAVA_HOME_FOUND=1"
-        exit /b 0
-    )
+if exist "!USER_PATH!\bin\javac.exe" (
+    set "JAVA_HOME=!USER_PATH!"
+    goto :run
+)
+if exist "!USER_PATH!\javac.exe" (
+    set "JAVA_HOME=!USER_PATH!"
+    goto :run
 )
 
-:: 2) PATH 中查找 javac
+echo.
+echo  Invalid path. Download Oracle JDK 21:
+echo  https://www.oracle.com/java/technologies/downloads/#jdk21-windows
+pause
+exit /b 1
+
+:: ===== 查找 JDK =====
+:find_jdk
+if defined JAVA_HOME (
+    if exist "!JAVA_HOME!\bin\javac.exe" exit /b 0
+)
 where javac >nul 2>&1
 if %errorlevel% equ 0 exit /b 0
-
-:: 3) 常见路径
 for /d %%d in (
     "C:\Program Files\Java\jdk-21*"
     "C:\Program Files (x86)\Java\jdk-21*"
@@ -103,38 +84,4 @@ for /d %%d in (
         exit /b 0
     )
 )
-
 exit /b 1
-
-:: ===== 自动下载 JDK 21 =====
-:download_jdk
-set "JDK_URL=https://download.oracle.com/java/21/latest/jdk-21_windows-x64_bin.zip"
-set "JDK_DIR=%~dp0jdk"
-set "JDK_ZIP=%TEMP%\jdk21.zip"
-
-echo.
-echo  Downloading JDK 21 (~180MB)...
-powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%JDK_URL%' -OutFile '%JDK_ZIP%'" 2>&1
-if not exist "%JDK_ZIP%" (
-    echo  Download failed.
-    exit /b 1
-)
-
-echo  Extracting...
-rmdir /s /q "%JDK_DIR%" 2>nul
-powershell -Command "Expand-Archive -Path '%JDK_ZIP%' -DestinationPath '%JDK_DIR%'" 2>&1
-
-for /d %%d in ("%JDK_DIR%\jdk-21*") do (
-    set "JAVA_HOME=%%d"
-)
-
-del "%JDK_ZIP%" 2>nul
-
-if not defined JAVA_HOME (
-    echo  Extraction failed.
-    exit /b 1
-)
-
-echo  JDK 21 installed to: !JAVA_HOME!
-setx JAVA_HOME "!JAVA_HOME!" >nul 2>&1
-exit /b 0
