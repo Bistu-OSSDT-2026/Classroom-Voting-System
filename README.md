@@ -324,23 +324,41 @@ team-project/
 
 ### 克隆与启动
 
+> ⚠️ **前置条件**：必须先安装 **JDK 21+**。下载地址：[Adoptium JDK 21](https://adoptium.net/download/)
+
+**Windows 用户：**
+
+```
+1. 双击 build.bat 构建项目（首次需下载依赖，约 1-2 分钟）
+   └─ 脚本会自动检测 JDK 21 路径
+   └─ 如果检测失败，会提示你手动输入 JDK 21 的安装路径
+      例如：D:\cursor\jdk21  或  C:\Program Files\Java\jdk-21
+
+2. 构建成功后，双击 start.bat 启动服务
+   └─ 同样会自动检测 JDK，检测失败时手动输入路径即可
+   └─ 脚本会自动清理端口 8080 的旧进程
+
+3. 浏览器访问 http://localhost:8080
+```
+
+**Mac / Linux 用户：**
+
 ```bash
 # 1. 克隆项目
 git clone https://github.com/Bistu-OSSDT-2026/Classroom-Voting-System.git
 cd Classroom-Voting-System
 
-# 2. 构建项目（首次需下载依赖，约 1-2 分钟）
-# Windows: 双击 build.bat
-# Mac/Linux: ./mvnw package -DskipTests
+# 2. 构建（首次需下载依赖，约 1-2 分钟）
+./mvnw package -DskipTests
 
-# 3. 启动服务
-# Windows: 双击 start.bat
-# Mac/Linux: ./mvnw spring-boot:run
-# 或直接: java -jar target/cvs-app.jar
+# 3. 启动
+./mvnw spring-boot:run
+# 或：java -jar target/cvs-app.jar
 
-# 4. 浏览器访问
-# http://localhost:8080
+# 4. 浏览器访问 http://localhost:8080
 ```
+
+> 💡 如果不知道 JDK 21 安装在哪里，可以在命令行输入 `where java`（Windows）或 `which java`（Mac/Linux）查看。
 
 ---
 
