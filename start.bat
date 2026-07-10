@@ -1,6 +1,4 @@
 @echo off
-set JAVA_HOME=C:\大学\暑期开源软件\jdk
-set PATH=%JAVA_HOME%\bin;%PATH%
 title CVS Server
 
 echo.
@@ -9,23 +7,64 @@ echo    CVS - Classroom Vote System
 echo  ============================================
 echo.
 
-:: Check Java
-java -version >nul 2>&1
+:: 自动查找 Java（优先级：JAVA_HOME > PATH > 常见安装目录）
+set "JAVA_CMD=java"
+
+:: 1) 尝试系统 JAVA_HOME 环境变量
+if defined JAVA_HOME (
+    if exist "%JAVA_HOME%\bin\java.exe" (
+        set "JAVA_CMD=%JAVA_HOME%\bin\java.exe"
+        goto :found_java
+    )
+)
+
+:: 2) 尝试 PATH 中是否有 java
+where java >nul 2>&1
+if %errorlevel% equ 0 (
+    goto :found_java
+)
+
+:: 3) 搜索常见 JDK 安装路径
+for /d %%d in (
+    "C:\Program Files\Java\jdk-21*"
+    "C:\Program Files\Java\jdk-22*"
+    "C:\Program Files\Java\jdk-23*"
+    "C:\Program Files\Eclipse Adoptium\jdk-21*"
+    "C:\Program Files\Eclipse Adoptium\jdk-22*"
+    "C:\Program Files\Microsoft\jdk-21*"
+) do (
+    if exist "%%d\bin\java.exe" (
+        set "JAVA_CMD=%%d\bin\java.exe"
+        set "JAVA_HOME=%%d"
+        goto :found_java
+    )
+)
+
+:: 找不到 Java
+echo  Java not found! Please install JDK 21:
+echo  https://adoptium.net/download/
+pause
+exit /b 1
+
+:found_java
+echo  Java found!
+
+:: Check Java version
+"%JAVA_CMD%" -version 2>&1 | findstr /i "version"
 if %errorlevel% neq 0 (
-    echo  Java not found! Install JDK 21:
-    echo  https://adoptium.net/download/
-    pause
-    exit
+    echo  Error checking Java version
 )
 
 :: Check if jar exists
 if not exist "target\cvs-app.jar" (
+    echo.
     echo  No build found. Run build.bat first.
     pause
-    exit
+    exit /b 1
 )
 
 :: Kill any existing instance on port 8080
+echo.
 echo  Checking port 8080...
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":8080.*LISTENING"') do (
     echo  Killing old process PID=%%a...
@@ -42,5 +81,5 @@ echo  Press Ctrl+C to stop
 echo  ============================================
 echo.
 
-java -jar target\cvs-app.jar
+"%JAVA_CMD%" -jar target\cvs-app.jar
 pause

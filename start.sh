@@ -3,12 +3,38 @@ set -e
 
 cd "$(dirname "$0")"
 
-# 检查 Java
-if ! java -version >/dev/null 2>&1; then
+# 自动查找 Java
+find_java() {
+  # 1) JAVA_HOME
+  if [ -n "$JAVA_HOME" ] && [ -x "$JAVA_HOME/bin/java" ]; then
+    echo "$JAVA_HOME/bin/java"
+    return
+  fi
+  # 2) PATH
+  if command -v java &>/dev/null; then
+    echo "java"
+    return
+  fi
+  # 3) 常见路径
+  for dir in /usr/lib/jvm/java-21-* /usr/lib/jvm/jdk-21* /usr/local/opt/openjdk@21/bin; do
+    if [ -x "$dir/bin/java" ]; then
+      echo "$dir/bin/java"
+      return
+    fi
+  done
+  echo ""
+}
+
+JAVA_CMD=$(find_java)
+
+if [ -z "$JAVA_CMD" ]; then
   echo "❌ 未找到 Java，请先安装 JDK 21"
   echo "下载: https://adoptium.net/download/"
   exit 1
 fi
+
+echo "✅ Java found: $JAVA_CMD"
+"$JAVA_CMD" -version 2>&1 | head -1
 
 # 首次构建
 if [ ! -f "target/cvs-app.jar" ]; then
@@ -28,4 +54,4 @@ echo "║  学生: student1 / 123456             ║"
 echo "╚══════════════════════════════════════╝"
 echo ""
 
-java -jar target/cvs-app.jar
+"$JAVA_CMD" -jar target/cvs-app.jar
