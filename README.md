@@ -16,13 +16,26 @@
 
 ## 📖 项目介绍
 
-**Classroom Vote System (CVS)** 是一款面向课堂教学场景的开源工具软件，旨在帮助教师通过**实时投票**快速掌握学生对各知识点的理解程度。系统采用 Spring Boot 三层架构（Controller → Service → Repository），支持教师创建课程知识体系、发起课堂投票、收集学生答题数据，并以可视化图表呈现各知识点的掌握度统计。
+**Classroom Vote System (CVS)** 是一款面向课堂教学场景的开源工具软件，旨在帮助教师通过**实时投票**和**课堂抢答**快速掌握学生对各知识点的理解程度。系统采用 Spring Boot 三层架构（Controller → Service → Repository），支持教师创建课程知识体系、发起课堂投票与抢答、收集学生答题数据，并以可视化图表呈现各知识点的掌握度统计。
+
+### 核心功能
+
+| 模块 | 功能 | 说明 |
+|------|------|------|
+| 🔐 用户认证 | 注册/登录 | 教师/学生角色区分，sessionStorage 会话保持 |
+| 📚 课程管理 | 课程 CRUD + 选课 | 教师创建课程，学生通过课程 ID 加入 |
+| 🏷️ 知识点管理 | 知识树构建 | 为课程添加/删除知识点，作为投票的知识锚点 |
+| 📝 课堂投票 | 实时投票 + 反馈 | 教师发起投票（设置选项与正确答案），学生参与后即时显示正误 |
+| 👤 实名/匿名投票 | 隐私控制 | 教师可配置实名/匿名模式；学生未投票前完全隐藏票数分布 |
+| ⚡ 课堂抢答 | 抢占式答题 | 教师出题→学生抢名额（前3人）→答题→排名展示 |
+| 📊 数据统计 | Chart.js 可视化 | 课程概览、知识点掌握度柱状图、学生排名横向图 |
 
 ### 核心价值
 
 - 🎯 **精准教学**：实时了解每个知识点的学生掌握情况，针对薄弱环节调整教学策略
-- ⚡ **高效互动**：课堂投票替代传统举手/点名，全员参与，数据自动汇总
-- 📊 **数据驱动**：Chart.js 可视化图表，掌握度一目了然
+- ⚡ **高效互动**：课堂投票 + 抢答替代传统举手/点名，全员参与，数据自动汇总
+- 👁️ **隐私保护**：学生未投票前完全看不到票数分布，避免从众效应；支持匿名投票
+- 📊 **数据驱动**：Chart.js 可视化图表，掌握度一目了然，教师端根据正确率给出教学建议
 - 🆓 **开源免费**：MIT 协议，可自由使用、修改、部署
 
 ---
@@ -32,30 +45,44 @@
 | 场景 | 描述 |
 |------|------|
 | 🏫 **高校课堂** | 教师在讲授某个知识点后发起投票，实时检测学生理解程度 |
+| ⚡ **课堂抢答** | 教师出题，学生抢占答题名额（前3名），激发课堂参与感 |
 | 📚 **培训教学** | 企业培训师在技术培训中验证学员对关键概念的掌握 |
 | 🧪 **翻转课堂** | 课前发布预习投票，课堂针对性讲解薄弱知识点 |
-| 📝 **随堂测验** | 替代纸质小测，自动统计正确率 |
+| 📝 **随堂测验** | 替代纸质小测，自动统计正确率并生成掌握度图表 |
 | 🎓 **公开课/讲座** | 大规模听众互动，实时了解听众背景和认知水平 |
 
 ---
 
-## 🏗️ 产品设计 (PRD)
+## 🏗️ 产品设计
 
 ### 用户角色
 
 | 角色 | 权限 |
 |------|------|
-| **教师** | 创建/管理课程、知识点、发起投票、关闭投票、查看所有统计数据 |
-| **学生** | 加入课程、参与投票、查看投票结果 |
+| **教师** | 创建/管理课程、知识点；发起/关闭投票；出题/开始抢答；查看所有统计数据、投票明细、抢答排名 |
+| **学生** | 加入课程；参与投票（一人一票）；参与抢答（抢占名额→答题）；查看个人答题反馈 |
 
 ### 核心流程
 
 ```
-教师创建课程 → 添加知识点 → 发起投票(关联知识点+设置正确答案)
-                                          ↓
-学生加入课程 → 查看投票列表 → 参与投票(选择答案)
-                                          ↓
-教师关闭投票 → 系统统计掌握度 → 图表可视化展示
+┌─ 投票流程 ──────────────────────────────────────┐
+│ 教师创建课程 → 添加知识点 → 发起投票              │
+│   (关联知识点+设置选项+标记正确答案+实名/匿名)      │
+│                       ↓                          │
+│ 学生加入课程 → 查看投票 → 参与投票（单选）         │
+│   （未投票前看不到票数，投票后看到正误反馈）        │
+│                       ↓                          │
+│ 教师查看投票分布 → 关闭投票 → 统计掌握度 → 图表展示 │
+└─────────────────────────────────────────────────┘
+
+┌─ 抢答流程 ──────────────────────────────────────┐
+│ 教师创建题目 → 设置选项和正确答案 → 点击「开始」    │
+│                       ↓                          │
+│ 学生点击「抢答」→ 前3名抢到名额 → 选择答案 → 提交  │
+│   （第4人及以后看到"名额已满"提示）               │
+│                       ↓                          │
+│ 教师实时看到正确答案 → 排行榜展示抢答顺序和姓名     │
+└─────────────────────────────────────────────────┘
 ```
 
 ### 功能清单
@@ -63,37 +90,44 @@
 | 模块 | 功能 | 状态 |
 |------|------|------|
 | 用户管理 | 注册/登录，教师/学生角色区分 | ✅ |
-| 课程管理 | 教师创建课程，学生通过 ID 加入 | ✅ |
+| 课程管理 | 教师创建课程，学生通过 ID 加入/退课 | ✅ |
 | 知识点管理 | 为课程添加/删除知识点，构建知识树 | ✅ |
-| 投票管理 | 发起投票、选项设置、参与投票、关闭投票 | ✅ |
+| 投票管理 | 发起投票、选项设置（含正确答案标记）、实名/匿名切换 | ✅ |
+| 投票反馈 | 学生投票后绿/红色正误标记，教师端正确率分档建议 | ✅ |
+| 隐私保护 | 学生未投票前隐藏票数分布，仅教师可见完整数据 | ✅ |
+| 投票明细 | 教师查看已投/未投学生名单，非匿名时显示每人选项 | ✅ |
+| 课堂抢答 | 教师出题→学生抢占名额（前3人）→答题→排行榜 | ✅ |
 | 数据统计 | 课程概览、知识点掌握度、学生排名、Chart.js 图表 | ✅ |
+| CI/CD | GitHub Actions 自动编译、测试、打包 | ✅ |
+| 一键启动 | build.bat/start.bat 自动检测 JDK 21 | ✅ |
 
 ---
 
 ## 🧱 架构设计
 
 ```
-┌──────────────────────────────────────────────────────┐
-│                    前端 (Browser)                     │
-│   HTML5 + Vanilla JS + Chart.js                      │
-│   login / courses / course-detail / statistics        │
-├──────────────────────────────────────────────────────┤
-│                  REST API (HTTP/JSON)                 │
-├──────────────────────────────────────────────────────┤
-│              Controller 层 (5 个控制器)                │
-│   AuthController       CourseController               │
-│   KnowledgePointController  VoteController            │
-│   StatisticsController                                │
-├──────────────────────────────────────────────────────┤
-│              Service 层 (5 个业务服务)                 │
-│   UserService  CourseService  KnowledgePointService   │
-│   VoteService  StatisticsService                      │
-├──────────────────────────────────────────────────────┤
-│            Repository 层 (7 个 JPA 接口)               │
-│   Spring Data JPA + Hibernate ORM                     │
-├──────────────────────────────────────────────────────┤
-│                  Database (H2 / MySQL)                │
-└──────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                     前端 (Browser)                            │
+│   HTML5 + Vanilla JS + Chart.js 4.4                           │
+│   index / login / courses / course-detail / statistics        │
+│   api.js (API 封装) + quiz.js (抢答模块)                       │
+├──────────────────────────────────────────────────────────────┤
+│                   REST API (HTTP/JSON)                        │
+├──────────────────────────────────────────────────────────────┤
+│              Controller 层 (6 个控制器)                        │
+│   AuthController       CourseController                       │
+│   KnowledgePointController   VoteController                   │
+│   StatisticsController       QuizController (抢答)            │
+├──────────────────────────────────────────────────────────────┤
+│              Service 层 (6 个业务服务)                         │
+│   UserService  CourseService  KnowledgePointService           │
+│   VoteService  StatisticsService  QuizService (抢答)          │
+├──────────────────────────────────────────────────────────────┤
+│            Repository 层 (9 个 JPA 接口)                       │
+│   Spring Data JPA + Hibernate ORM                             │
+├──────────────────────────────────────────────────────────────┤
+│                  Database (H2 / MySQL)                        │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ### 技术选型
@@ -107,17 +141,21 @@
 | 前端 | 原生 HTML/CSS/JS | 零依赖框架，Spring Boot 直接托管 |
 | 图表 | Chart.js 4.x (CDN) | 轻量、美观、支持柱状图/横向图 |
 | CI/CD | GitHub Actions | 自动化构建、测试、打包 |
-| Java | JDK 21 LTS | 长期支持版本，虚拟线程等新特性 |
+| Java | JDK 21 LTS | 长期支持版本 |
 
 ### 数据库 ER 图
 
 ```
 users ──1:N──→ courses ──1:N──→ knowledge_points
   │               │                    │
-  │               │                    │
-  │           course_enrollments       │
-  │               │                    │
-  └──1:N──→ vote_records ←── vote_sessions ──1:N──→ vote_options
+  │               ├──1:N──→ vote_sessions ──1:N──→ vote_options
+  │               │               │                    │
+  │               │               └──1:N──→ vote_records
+  │               │
+  │               ├──1:N──→ course_enrollments
+  │               │
+  │               └──1:N──→ quiz_question ──1:N──→ quiz_record
+  └─────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -128,70 +166,81 @@ users ──1:N──→ courses ──1:N──→ knowledge_points
 team-project/
 ├── pom.xml                              # Maven 项目配置
 ├── mvnw / mvnw.cmd                      # Maven Wrapper（无需安装 Maven）
-├── build.bat                            # 一键构建脚本
+├── build.bat                            # 一键构建脚本（自动检测 JDK 21）
 ├── start.bat / start.sh                 # 一键启动脚本
 │
 ├── src/main/java/com/cvs/
 │   ├── CvsApplication.java              # Spring Boot 启动类
 │   ├── config/
 │   │   └── WebConfig.java               # CORS 跨域配置
-│   ├── model/                           # 📦 实体层 (7个)
+│   ├── model/                           # 📦 实体层 (9个)
 │   │   ├── User.java                    # 用户实体（教师/学生角色）
 │   │   ├── Course.java                  # 课程实体
-│   │   ├── CourseEnrollment.java        # 选课关系
+│   │   ├── CourseEnrollment.java        # 选课关系（唯一约束）
 │   │   ├── KnowledgePoint.java          # 知识点实体
-│   │   ├── VoteSession.java             # 投票会话（ACTIVE/CLOSED）
+│   │   ├── VoteSession.java             # 投票会话（ACTIVE/CLOSED + 匿名标记）
 │   │   ├── VoteOption.java              # 投票选项（含正确答案标记）
-│   │   └── VoteRecord.java              # 投票记录（一人一票）
-│   ├── repository/                      # 🗄️ 数据访问层 (7个)
+│   │   ├── VoteRecord.java              # 投票记录（一人一票唯一约束）
+│   │   └── quiz/
+│   │       ├── QuizQuestion.java        # 抢答题目（PENDING/ACTIVE/CLOSED）
+│   │       └── QuizRecord.java          # 抢答记录（抢名额顺序 + 答题结果）
+│   ├── repository/                      # 🗄️ 数据访问层 (9个)
 │   │   ├── UserRepository.java
 │   │   ├── CourseRepository.java
 │   │   ├── CourseEnrollmentRepository.java
 │   │   ├── KnowledgePointRepository.java
 │   │   ├── VoteSessionRepository.java
 │   │   ├── VoteOptionRepository.java
-│   │   └── VoteRecordRepository.java
-│   ├── service/                         # 🔧 业务逻辑层 (5个)
+│   │   ├── VoteRecordRepository.java
+│   │   └── quiz/
+│   │       ├── QuizQuestionRepository.java
+│   │       └── QuizRecordRepository.java
+│   ├── service/                         # 🔧 业务逻辑层 (6个)
 │   │   ├── UserService.java             # 用户认证、角色校验
-│   │   ├── CourseService.java           # 课程 CRUD、选课
+│   │   ├── CourseService.java           # 课程 CRUD、选课管理
 │   │   ├── KnowledgePointService.java   # 知识点管理
-│   │   ├── VoteService.java             # 投票创建、投票、统计
-│   │   └── StatisticsService.java       # 掌握度计算、数据分析
-│   ├── controller/                      # 🌐 REST API 层 (5个)
+│   │   ├── VoteService.java             # 投票创建/投票/关闭/统计
+│   │   ├── StatisticsService.java       # 掌握度计算、数据分析
+│   │   └── quiz/
+│   │       └── QuizService.java         # 抢答：出题/开始/抢名额/提交/排名
+│   ├── controller/                      # 🌐 REST API 层 (6个)
 │   │   ├── AuthController.java          # /api/auth/*
 │   │   ├── CourseController.java        # /api/courses/*
 │   │   ├── KnowledgePointController.java # /api/courses/{id}/knowledge-points/*
 │   │   ├── VoteController.java          # /api/vote-sessions/*
-│   │   └── StatisticsController.java    # /api/statistics/*
-│   └── dto/                             # 📤 数据传输对象 (10个)
+│   │   ├── StatisticsController.java    # /api/statistics/*
+│   │   └── quiz/
+│   │       └── QuizController.java      # /api/quiz/*
+│   └── dto/                             # 📤 数据传输对象 (20+个)
 │       ├── ApiResponse.java             # 统一响应格式 {code, message, data}
-│       ├── LoginRequest.java            # 登录请求
-│       ├── RegisterRequest.java         # 注册请求
-│       ├── UserVO.java                  # 用户视图对象
-│       ├── CourseVO.java                # 课程视图对象
-│       ├── KnowledgePointVO.java        # 知识点视图对象
-│       ├── CreateVoteRequest.java       # 创建投票请求
-│       ├── VoteRequest.java             # 投票请求
-│       ├── VoteSessionVO.java           # 投票详情视图
-│       └── StatisticsVO.java            # 统计数据视图
+│       ├── LoginRequest.java / RegisterRequest.java
+│       ├── UserVO.java / CourseVO.java / KnowledgePointVO.java
+│       ├── CreateVoteRequest.java / VoteRequest.java
+│       ├── VoteSessionVO.java / CastVoteResultVO.java
+│       ├── VoteRecordVO.java / VoteStudentVO.java
+│       ├── StatisticsVO.java            # 嵌套统计视图
+│       └── quiz/
+│           ├── QuizCreateRequest.java / QuizSubmitRequest.java
+│           ├── QuizGrabVO.java / QuizResultVO.java
+│           ├── QuizStatusVO.java / QuizRankVO.java
 │
 ├── src/main/resources/
-│   ├── application.yml                  # 应用配置
-│   ├── data.sql                         # 示例数据（演示用）
+│   ├── application.yml                  # 应用配置（H2/MySQL 切换）
+│   ├── data.sql                         # 示例数据（4个用户、2门课、5个知识点）
 │   └── static/                          # 🌐 前端页面
 │       ├── index.html                   # 入口跳转
 │       ├── login.html                   # 登录/注册页面
 │       ├── courses.html                 # 课程列表页面
-│       ├── course-detail.html           # 课程详情 + 投票页面
-│       ├── statistics.html              # 数据统计图表页面
+│       ├── course-detail.html           # 课程详情 + 投票 + 抢答页面
+│       ├── statistics.html              # 数据统计图表页面（教师专属）
 │       ├── css/style.css                # 全局样式表
-│       └── js/api.js                    # API 调用封装
-│
-├── src/test/java/com/cvs/               # 🧪 测试代码（待扩展）
+│       └── js/
+│           ├── api.js                   # API 调用封装（全部 25 个端点）
+│           └── quiz.js                  # 抢答模块（IIFE 独立模块）
 │
 └── .github/workflows/
-    ├── ci.yml                           # CI: 自动编译测试
-    └── deploy.yml                       # CD: 自动打包部署
+    ├── ci.yml                           # CI: 自动编译 + 测试
+    └── deploy.yml                       # CD: 自动打包 + 上传 Artifact
 ```
 
 ---
@@ -212,8 +261,8 @@ team-project/
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/lclll-7427/team-project.git
-cd team-project
+git clone https://github.com/Bistu-OSSDT-2026/Classroom-Voting-System.git
+cd Classroom-Voting-System
 
 # 2. 构建项目（首次需下载依赖，约 1-2 分钟）
 # Windows: 双击 build.bat
@@ -222,22 +271,20 @@ cd team-project
 # 3. 启动服务
 # Windows: 双击 start.bat
 # Mac/Linux: ./mvnw spring-boot:run
+# 或直接: java -jar target/cvs-app.jar
 
 # 4. 浏览器访问
 # http://localhost:8080
 ```
 
-### IDE 导入
+### 演示账号
 
-**IntelliJ IDEA**:
-1. `File` → `Open` → 选择 `team-project` 文件夹
-2. IDEA 自动识别 Maven 项目，点击 `Load Maven Project`
-3. 运行 `src/main/java/com/cvs/CvsApplication.java` 的 `main` 方法
-
-**VS Code**:
-1. 安装 `Extension Pack for Java` 插件
-2. `File` → `Open Folder` → 选择 `team-project`
-3. 按 `F5` 或点击 `Run` 启动
+| 用户名 | 密码 | 角色 |
+|--------|------|------|
+| teacher1 | 123456 | 教师 |
+| student1 | 123456 | 学生 |
+| student2 | 123456 | 学生 |
+| student3 | 123456 | 学生 |
 
 ---
 
@@ -246,7 +293,7 @@ cd team-project
 ### 方式一：本地部署
 
 ```bash
-# 打包 JAR
+# 打包 JAR（跳过测试）
 ./mvnw clean package -DskipTests
 
 # 运行
@@ -256,24 +303,12 @@ java -jar target/cvs-app.jar
 java -jar target/cvs-app.jar --server.port=9090
 ```
 
-### 方式二：Docker 部署
-
-```dockerfile
-# Dockerfile（待添加）
-FROM eclipse-temurin:21-jre
-COPY target/cvs-app.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "/app.jar"]
-```
-
-### 方式三：GitHub Actions 自动构建
+### 方式二：GitHub Actions 自动构建
 
 每次推送代码，GitHub Actions 自动：
 1. 编译 + 测试
 2. 打包 JAR
 3. 上传为 Artifact（可下载）
-
-在 [Actions](https://github.com/lclll-7427/team-project/actions) 页面查看构建结果。
 
 ### 数据库切换（H2 → MySQL）
 
@@ -320,7 +355,7 @@ spring:
 | GET | `/api/courses?userId=&role=` | 课程列表 |
 | POST | `/api/courses` | 创建课程 `{teacherId, name, description}` |
 | POST | `/api/courses/{id}/enroll` | 加入课程 `{studentId}` |
-| DELETE | `/api/courses/{id}?teacherId=` | 删除课程 |
+| DELETE | `/api/courses/{id}?teacherId=` | 删除课程（仅创建者） |
 
 ### 知识点
 
@@ -328,17 +363,19 @@ spring:
 |------|------|------|
 | GET | `/api/courses/{cid}/knowledge-points` | 知识点列表 |
 | POST | `/api/courses/{cid}/knowledge-points` | 添加知识点 `{teacherId, name, description}` |
-| DELETE | `/api/knowledge-points/{id}?teacherId=` | 删除知识点 |
+| DELETE | `/api/knowledge-points/{id}?teacherId=` | 删除知识点（仅创建者） |
 
 ### 投票
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/vote-sessions?teacherId=` | 创建投票 `{title, courseId, knowledgePointId, options}` |
-| GET | `/api/vote-sessions/{id}` | 投票详情（含实时票数） |
+| POST | `/api/vote-sessions?teacherId=` | 创建投票 `{title, courseId, knowledgePointId, options[], anonymous}` |
+| GET | `/api/vote-sessions/{id}?studentId=` | 投票详情（学生身份决定是否可见票数） |
 | POST | `/api/vote-sessions/{id}/vote` | 提交投票 `{studentId, optionId}` |
 | PUT | `/api/vote-sessions/{id}/close?teacherId=` | 关闭投票 |
-| GET | `/api/vote-sessions/by-course/{cid}` | 课程投票列表 |
+| GET | `/api/vote-sessions/{id}/students` | 已投/未投学生名单 |
+| GET | `/api/vote-sessions/by-course/{cid}` | 课程投票列表（含正确率） |
+| GET | `/api/vote-sessions/{id}/records?teacherId=` | 学生投票明细 |
 
 ### 统计
 
@@ -347,6 +384,18 @@ spring:
 | GET | `/api/statistics/courses/{id}/overview` | 课程掌握度概览 |
 | GET | `/api/statistics/courses/{id}/knowledge-points` | 各知识点掌握度 |
 | GET | `/api/statistics/courses/{id}/students` | 各学生掌握度排名 |
+
+### 课堂抢答
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/quiz/create` | 创建题目 `{title, options[], correctOption, courseId, teacherId}` |
+| POST | `/api/quiz/start/{id}?teacherId=` | 教师开始抢答 |
+| POST | `/api/quiz/grab` | 学生抢占名额 `{questionId, studentId}` |
+| POST | `/api/quiz/submit` | 提交答案 `{questionId, studentId, chosenOption}` |
+| GET | `/api/quiz/status/{id}` | 题目状态（已抢/答对数量） |
+| GET | `/api/quiz/rank/{id}` | 抢答排行榜（按抢答顺序） |
+| GET | `/api/quiz/by-course/{cid}` | 课程抢答题目列表 |
 
 ---
 
@@ -360,38 +409,6 @@ spring:
 Fork → Clone → 创建分支 → 修改 → 测试 → Commit → Push → Pull Request
 ```
 
-### 详细步骤
-
-```bash
-# 1. Fork 本仓库（点击 GitHub 页面右上角 Fork 按钮）
-
-# 2. Clone 你的 Fork
-git clone https://github.com/你的用户名/team-project.git
-cd team-project
-
-# 3. 添加上游仓库
-git remote add upstream https://github.com/lclll-7427/team-project.git
-
-# 4. 创建功能分支
-git checkout -b feature/你的功能名
-
-# 5. 开发 & 测试
-# ... 编写代码 ...
-./mvnw test
-
-# 6. 提交
-git add .
-git commit -m "feat: 功能描述"
-
-# 7. 同步上游（防止冲突）
-git fetch upstream
-git rebase upstream/main
-
-# 8. 推送并创建 PR
-git push origin feature/你的功能名
-# 在 GitHub 上点击 "New Pull Request"
-```
-
 ### 代码规范
 
 - 遵循 Java 命名规范（驼峰命名）
@@ -403,6 +420,7 @@ git push origin feature/你的功能名
 
 | 优先级 | 功能 | 状态 |
 |--------|------|------|
+| ~~P0~~ | ~~课堂抢答功能~~ | ✅ 已完成 |
 | P0 | 用户认证 Session/JWT 增强 | 📋 待开发 |
 | P0 | 单元测试覆盖 Service 层 | 📋 待开发 |
 | P1 | 投票支持多选、限时 | 📋 待开发 |
@@ -414,36 +432,15 @@ git push origin feature/你的功能名
 
 ---
 
-## 🆘 如何获取帮助
-
-| 渠道 | 说明 |
-|------|------|
-| 📖 [GitHub Issues](https://github.com/lclll-7427/team-project/issues) | Bug 报告、功能请求 |
-| 💬 [GitHub Discussions](https://github.com/lclll-7427/team-project/discussions) | 技术讨论、使用问题 |
-| 📧 Email | 通过 GitHub Profile 联系维护者 |
-
-### 常见问题
-
-**Q: 启动报 `Port 8080 was already in use`？**
-A: 重新双击 `start.bat`（已内置自动杀旧进程）。或手动：`netstat -ano | findstr :8080` → `taskkill /PID xxx /F`
-
-**Q: 前端页面中文乱码？**
-A: 检查浏览器编码设置为 UTF-8。
-
-**Q: 如何重置演示数据？**
-A: 重启服务即可（H2 内存数据库自动重置为 `data.sql`）。
-
----
-
 ## 👥 核心团队
 
 | 角色 | 成员 |
 |------|------|
-| 项目负责人 | [@lclll-7427](https://github.com/lclll-7427) |
-| 核心开发者 | [@Jerryx6218](https://github.com/Jerryx6218) |
-| 核心开发者 | [@claire571](https://github.com/claire571) |
-| 核心开发者 | [@wenq07](https://github.com/wenq07) |
-| 贡献者 | [查看贡献者列表](https://github.com/lclll-7427/team-project/graphs/contributors) |
+| 项目负责人、后端开发 | [@lclll-7427](https://github.com/lclll-7427) |
+| 核心开发者、前端开发 | [@zcr17](https://github.com/zcr17) |
+| 核心开发者、构建脚本 | [@Jerryx6218](https://github.com/Jerryx6218) |
+| 核心开发者、文档 | [@wenq07](https://github.com/wenq07) |
+| 核心开发者、测试 | [@claire571](https://github.com/claire571) |
 
 ---
 
